@@ -1,12 +1,14 @@
 // src/pages/Checkout.jsx
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
-import { ChevronDown, CreditCard, Truck, Wallet } from 'lucide-react'
+import { ChevronDown, CreditCard, Truck, Wallet, MapPin, Pencil } from 'lucide-react'
 import Button from '@/components/ui/Button/Button'
 import Input from '@/components/ui/Input/Input'
+import Spinner from '@/components/ui/Spinner/Spinner'
 import useCartStore from '@/store/cartStore'
 import useAuthStore from '@/store/authStore'
 import { createPreference } from '@/lib/mercadopago'
+import { getDefaultAddress } from '@/services/addressService'
 import { formatPrice } from '@/utils/formatters'
 import styles from './Checkout.module.css'
 
@@ -46,6 +48,48 @@ function Checkout() {
   const [payError, setPayError] = useState(null)
   const [coupon,  setCoupon]  = useState({ open: false, code: '' })
 
+  // Endereço salvo do usuário logado: carregado do banco e usado para
+  // pré-preencher o checkout, dispensando o cadastro manual.
+  const [savedAddress,    setSavedAddress]    = useState(null)
+  const [addressLoading,  setAddressLoading]  = useState(Boolean(user))
+  const [editingAddress,  setEditingAddress]  = useState(false)
+
+  useEffect(() => {
+    if (!user?.id) { setAddressLoading(false); return }
+    let active = true
+    ;(async () => {
+      try {
+        const addr = await getDefaultAddress(user.id)
+        if (!active || !addr) return
+        setSavedAddress(addr)
+        // Mescla o endereço salvo no formulário (sem sobrescrever o que o
+        // usuário já tenha digitado nem os dados de nome/e-mail da conta).
+        setForm((f) => ({
+          ...f,
+          firstName: f.firstName || addr.firstName,
+          lastName:  f.lastName  || addr.lastName,
+          company:   f.company   || addr.company,
+          country:   addr.country || f.country,
+          address:   f.address   || addr.address,
+          number:    f.number    || addr.number,
+          city:      f.city      || addr.city,
+          state:     f.state     || addr.state,
+          cep:       f.cep       || addr.cep,
+          phone:     f.phone     || addr.phone,
+        }))
+      } catch {
+        // Falha silenciosa: cai para o formulário de cadastro manual.
+      } finally {
+        if (active) setAddressLoading(false)
+      }
+    })()
+    return () => { active = false }
+  }, [user?.id])
+
+  // Mostra o endereço como descrição (somente leitura) quando há um endereço
+  // salvo e o usuário não optou por editá-lo.
+  const showSavedAddress = Boolean(savedAddress) && !editingAddress
+
   function updateField(field, value) {
     setForm((f) => ({ ...f, [field]: value }))
     setErrors((e) => ({ ...e, [field]: undefined }))
@@ -63,7 +107,12 @@ function Checkout() {
     e.preventDefault()
     setPayError(null)
     const errs = validate()
-    if (Object.keys(errs).length > 0) { setErrors(errs); return }
+    if (Object.keys(errs).length > 0) {
+      setErrors(errs)
+      // Endereço salvo incompleto: revela o formulário para o usuário corrigir.
+      if (showSavedAddress) setEditingAddress(true)
+      return
+    }
     if (!agreed) { setErrors({ agreed: 'Você precisa aceitar os termos.' }); return }
 
     const order = {
@@ -153,63 +202,111 @@ function Checkout() {
             <div className={styles.formSection}>
               <h2 className={styles.sectionTitle}>Detalhes de faturamento</h2>
 
-              <div className={styles.formGrid}>
-                <Input label="Nome" required value={form.firstName}
-                  onChange={(e) => updateField('firstName', e.target.value)}
-                  error={errors.firstName} autoComplete="given-name" />
-                <Input label="Sobrenome" required value={form.lastName}
-                  onChange={(e) => updateField('lastName', e.target.value)}
-                  error={errors.lastName} autoComplete="family-name" />
-              </div>
-
-              <Input label="Nome da empresa" value={form.company}
-                onChange={(e) => updateField('company', e.target.value)}
-                helperText="Opcional" autoComplete="organization" />
-
-              <div className={styles.formRow}>
-                <label htmlFor="country" className={styles.selectLabel}>País <span className={styles.req}>*</span></label>
-                <select id="country" value={form.country}
-                  onChange={(e) => updateField('country', e.target.value)}
-                  className={styles.select}>
-                  <option>Brasil</option>
-                </select>
-              </div>
-
-              <Input label="Endereço" required value={form.address}
-                onChange={(e) => updateField('address', e.target.value)}
-                error={errors.address} autoComplete="street-address" />
-              <Input label="Número / Complemento" value={form.number}
-                onChange={(e) => updateField('number', e.target.value)} />
-
-              <div className={styles.formGrid}>
-                <Input label="Cidade" required value={form.city}
-                  onChange={(e) => updateField('city', e.target.value)}
-                  error={errors.city} autoComplete="address-level2" />
-
-                <div className={styles.formRow}>
-                  <label htmlFor="state" className={styles.selectLabel}>Estado <span className={styles.req}>*</span></label>
-                  <select id="state" value={form.state}
-                    onChange={(e) => updateField('state', e.target.value)}
-                    className={`${styles.select} ${errors.state ? styles.selectError : ''}`}>
-                    <option value="">Selecione...</option>
-                    {ESTADOS_BR.map((s) => <option key={s} value={s}>{s}</option>)}
-                  </select>
-                  {errors.state && <p className={styles.fieldError}>{errors.state}</p>}
+              {addressLoading ? (
+                <Spinner message="Carregando seu endereço..." />
+              ) : showSavedAddress ? (
+                /* ── Endereço já cadastrado: apenas a descrição ── */
+                <div className={styles.savedAddress}>
+                  <div className={styles.savedAddressHeader}>
+                    <span className={styles.savedAddressBadge}>
+                      <MapPin size={16} aria-hidden="true" /> Endereço cadastrado
+                    </span>
+                    <button
+                      type="button"
+                      className={styles.changeAddressBtn}
+                      onClick={() => setEditingAddress(true)}
+                    >
+                      <Pencil size={14} aria-hidden="true" /> Editar
+                    </button>
+                  </div>
+                  <address className={styles.savedAddressLines}>
+                    <p className={styles.savedAddressName}>{form.firstName} {form.lastName}</p>
+                    {form.company && <p>{form.company}</p>}
+                    <p>{form.address}{form.number ? `, ${form.number}` : ''}</p>
+                    <p>
+                      {form.city}{form.state ? ` — ${form.state}` : ''}
+                      {form.cep ? ` · ${form.cep}` : ''}
+                    </p>
+                    <p>{form.country}</p>
+                    {form.phone && <p>{form.phone}</p>}
+                    {form.email && <p>{form.email}</p>}
+                  </address>
+                  <p className={styles.savedAddressHint}>
+                    Confira os dados acima. Para entregar em outro endereço, clique em “Editar”.
+                  </p>
                 </div>
-              </div>
+              ) : (
+                /* ── Formulário de endereço (visitante ou edição) ── */
+                <>
+                  <div className={styles.formGrid}>
+                    <Input label="Nome" required value={form.firstName}
+                      onChange={(e) => updateField('firstName', e.target.value)}
+                      error={errors.firstName} autoComplete="given-name" />
+                    <Input label="Sobrenome" required value={form.lastName}
+                      onChange={(e) => updateField('lastName', e.target.value)}
+                      error={errors.lastName} autoComplete="family-name" />
+                  </div>
 
-              <div className={styles.formGrid}>
-                <Input label="CEP" required value={form.cep}
-                  onChange={(e) => updateField('cep', e.target.value)}
-                  error={errors.cep} autoComplete="postal-code" placeholder="00000-000" />
-                <Input label="Telefone" required value={form.phone}
-                  onChange={(e) => updateField('phone', e.target.value)}
-                  error={errors.phone} autoComplete="tel" placeholder="(11) 99999-9999" />
-              </div>
+                  <Input label="Nome da empresa" value={form.company}
+                    onChange={(e) => updateField('company', e.target.value)}
+                    helperText="Opcional" autoComplete="organization" />
 
-              <Input label="E-mail" type="email" required value={form.email}
-                onChange={(e) => updateField('email', e.target.value)}
-                error={errors.email} autoComplete="email" />
+                  <div className={styles.formRow}>
+                    <label htmlFor="country" className={styles.selectLabel}>País <span className={styles.req}>*</span></label>
+                    <select id="country" value={form.country}
+                      onChange={(e) => updateField('country', e.target.value)}
+                      className={styles.select}>
+                      <option>Brasil</option>
+                    </select>
+                  </div>
+
+                  <Input label="Endereço" required value={form.address}
+                    onChange={(e) => updateField('address', e.target.value)}
+                    error={errors.address} autoComplete="street-address" />
+                  <Input label="Número / Complemento" value={form.number}
+                    onChange={(e) => updateField('number', e.target.value)} />
+
+                  <div className={styles.formGrid}>
+                    <Input label="Cidade" required value={form.city}
+                      onChange={(e) => updateField('city', e.target.value)}
+                      error={errors.city} autoComplete="address-level2" />
+
+                    <div className={styles.formRow}>
+                      <label htmlFor="state" className={styles.selectLabel}>Estado <span className={styles.req}>*</span></label>
+                      <select id="state" value={form.state}
+                        onChange={(e) => updateField('state', e.target.value)}
+                        className={`${styles.select} ${errors.state ? styles.selectError : ''}`}>
+                        <option value="">Selecione...</option>
+                        {ESTADOS_BR.map((s) => <option key={s} value={s}>{s}</option>)}
+                      </select>
+                      {errors.state && <p className={styles.fieldError}>{errors.state}</p>}
+                    </div>
+                  </div>
+
+                  <div className={styles.formGrid}>
+                    <Input label="CEP" required value={form.cep}
+                      onChange={(e) => updateField('cep', e.target.value)}
+                      error={errors.cep} autoComplete="postal-code" placeholder="00000-000" />
+                    <Input label="Telefone" required value={form.phone}
+                      onChange={(e) => updateField('phone', e.target.value)}
+                      error={errors.phone} autoComplete="tel" placeholder="(11) 99999-9999" />
+                  </div>
+
+                  <Input label="E-mail" type="email" required value={form.email}
+                    onChange={(e) => updateField('email', e.target.value)}
+                    error={errors.email} autoComplete="email" />
+
+                  {savedAddress && (
+                    <button
+                      type="button"
+                      className={styles.changeAddressBtn}
+                      onClick={() => setEditingAddress(false)}
+                    >
+                      Usar endereço cadastrado
+                    </button>
+                  )}
+                </>
+              )}
 
               <div className={styles.notesSection}>
                 <h2 className={styles.sectionTitle}>Informação adicional</h2>
