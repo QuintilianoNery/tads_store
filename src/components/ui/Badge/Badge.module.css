@@ -1,0 +1,21 @@
+/* src/components/ui/Badge/Badge.module.css */
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  font-family: var(--font-display);
+  font-weight: var(--font-bold);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  border-radius: var(--radius-sm);
+  line-height: 1;
+}
+
+.sm { padding: 2px var(--space-2); font-size: 0.625rem; }
+.md { padding: var(--space-1) var(--space-3); font-size: var(--text-xs); }
+
+.primary { background: var(--color-primary-100); color: var(--color-primary-800); }
+.success { background: #c6f6d5; color: #276749; }
+.danger  { background: #fed7d7; color: #c53030; }
+.warning { background: #feebc8; color: #c05621; }
+.info    { background: #bee3f8; color: #2a69ac; }
