@@ -8,6 +8,8 @@ dist/
 dist-ssr/
 build/
 
+ui/
+
 # Variáveis de ambiente (NUNCA commitar!)
 .env
 .env.local
