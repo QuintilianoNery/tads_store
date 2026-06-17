@@ -25,12 +25,18 @@ function ActionBtn({ children, onClick, count }) {
   );
 }
 
-// Item "Categorias": pai não-clicável; submenu aparece ao passar o mouse.
-function CategoriesNav({ nav, categories, active = false }) {
+// Grupos de categorias exibidos no menu superior. Cada grupo é um item pai
+// não-clicável cujo submenu lista os slugs (DummyJSON) relacionados.
+const CATEGORY_GROUPS = [
+  { label: 'Eletrônicos', slugs: ['laptops', 'mobile-accessories', 'smartphones', 'tablets'] },
+  { label: 'Acessórios', slugs: ['sports-accessories', 'sunglasses', 'mens-watches', 'womens-watches'] },
+  { label: 'Velocidade', slugs: ['motorcycle', 'vehicle'] },
+];
+
+// Item de grupo: pai não-clicável; submenu aparece ao passar o mouse.
+function CategoryGroupNav({ nav, label, slugs }) {
   const [open, setOpen] = useState(false);
   const [hover, setHover] = useState(null);
-  const highlight = open || active;
-  const menuCategories = categories.filter((c) => c !== 'Todos');
   return (
     <div
       style={{ position: 'relative' }}
@@ -41,12 +47,12 @@ function CategoriesNav({ nav, categories, active = false }) {
         style={{
           display: 'flex', alignItems: 'center', gap: 4, padding: '12px 16px',
           fontFamily: 'var(--font-display)', fontSize: 'var(--text-sm)', fontWeight: 'var(--font-medium)',
-          letterSpacing: '0.025em', color: highlight ? '#fff' : 'var(--color-primary-200)',
-          borderBottom: '2px solid ' + (highlight ? 'var(--color-accent)' : 'transparent'),
+          letterSpacing: '0.025em', color: open ? '#fff' : 'var(--color-primary-200)',
+          borderBottom: '2px solid ' + (open ? 'var(--color-accent)' : 'transparent'),
           cursor: 'default', transition: 'all var(--transition-fast)',
         }}
       >
-        Categorias
+        {label}
         <I.ChevronDown size={14} style={{ transform: open ? 'rotate(180deg)' : 'none', transition: 'transform var(--transition-fast)' }} />
       </span>
       {open && (
@@ -58,7 +64,7 @@ function CategoriesNav({ nav, categories, active = false }) {
             boxShadow: 'var(--shadow-md)', padding: '4px 0', zIndex: 210,
           }}
         >
-          {menuCategories.map((c) => (
+          {slugs.map((c) => (
             <button
               key={c}
               role="menuitem"
@@ -81,15 +87,9 @@ function CategoriesNav({ nav, categories, active = false }) {
 }
 
 export default function Header() {
-  const { nav, user, cartCount, cartTotal, wishCount, logout, search, setSearch, categories } = useStore();
-  const { pathname, state } = useLocation();
-  const cat = state?.cat;
-  // Em /produtos: categoria específica → "Categorias"; "Todos"/sem categoria → "Comprar".
-  const active = pathname === '/'
-    ? 'home'
-    : pathname.startsWith('/produto')
-      ? (cat && cat !== 'Todos' ? 'categorias' : 'comprar')
-      : '';
+  const { nav, user, cartCount, cartTotal, wishCount, logout, search, setSearch } = useStore();
+  const { pathname } = useLocation();
+  const active = pathname === '/' ? 'home' : '';
 
   const navItem = (label, to, key = to) => (
     <button
@@ -154,8 +154,9 @@ export default function Header() {
       <nav style={{ background: 'var(--color-primary-900)', borderTop: '1px solid var(--color-primary-700)' }}>
         <div className="container" style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
           {navItem('Home', 'home')}
-          {navItem('Comprar', 'catalog', 'comprar')}
-          <CategoriesNav nav={nav} categories={categories} active={active === 'categorias'} />
+          {CATEGORY_GROUPS.map((g) => (
+            <CategoryGroupNav key={g.label} nav={nav} label={g.label} slugs={g.slugs} />
+          ))}
         </div>
       </nav>
     </header>
