@@ -5,6 +5,7 @@ import { Button, Badge, StarRating } from '@/components/ds';
 import { Icon as I } from '@/components/Icon.jsx';
 import { useStore } from '@/context/StoreContext';
 import { fmtBRL, finalPrice, galleryFor } from '@/lib/format';
+import { categoryLabel } from '@/utils/formatters';
 import { Eyebrow, ProductGrid } from './shared.jsx';
 
 const REVIEWS = [
@@ -107,9 +108,17 @@ function ReviewsBlock({ rating }) {
 export default function Detail() {
   const { nav, addToCart, toggleWish, wish, products } = useStore();
   const { id } = useParams();
+  const [qty, setQty] = useState(1);
   const pid = Number(id);
   const p = products.find((x) => x.id === pid) || products[0];
-  const [qty, setQty] = useState(1);
+  // Catálogo ainda carregando (lista vazia): evita quebrar antes do fetch concluir.
+  if (!p) {
+    return (
+      <div className="container" style={{ padding: '80px 0', textAlign: 'center', color: 'var(--color-gray-500)' }}>
+        Carregando produto…
+      </div>
+    );
+  }
   const fp = finalPrice(p);
   const images = galleryFor(p);
   const saved = p.discountPercentage > 0 ? p.price - fp : 0;
@@ -130,7 +139,7 @@ export default function Detail() {
         <Gallery images={images} discount={p.discountPercentage} />
 
         <div>
-          <Eyebrow>{p.category}</Eyebrow>
+          <Eyebrow>{categoryLabel(p.category)}</Eyebrow>
           <h1 style={{ fontSize: 'var(--text-4xl)', color: 'var(--color-gray-900)', margin: '8px 0 14px', lineHeight: 1.12 }}>{p.title}</h1>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 22 }}>
             <StarRating rating={p.rating} size={18} />

@@ -3,11 +3,8 @@ import { useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import { Icon as I } from './Icon.jsx';
 import { useStore } from '@/context/StoreContext';
-import { CATEGORIES } from '@/data/products';
 import { fmtBRL } from '@/lib/format';
-
-// Submenu de Categorias: todas as categorias cadastradas, exceto "Todos"
-const MENU_CATEGORIES = CATEGORIES.filter((c) => c !== 'Todos');
+import { categoryLabel } from '@/utils/formatters';
 
 const LOGO = '/images/tads_store_logo_cropped.png';
 
@@ -29,10 +26,11 @@ function ActionBtn({ children, onClick, count }) {
 }
 
 // Item "Categorias": pai não-clicável; submenu aparece ao passar o mouse.
-function CategoriesNav({ nav, active = false }) {
+function CategoriesNav({ nav, categories, active = false }) {
   const [open, setOpen] = useState(false);
   const [hover, setHover] = useState(null);
   const highlight = open || active;
+  const menuCategories = categories.filter((c) => c !== 'Todos');
   return (
     <div
       style={{ position: 'relative' }}
@@ -60,7 +58,7 @@ function CategoriesNav({ nav, active = false }) {
             boxShadow: 'var(--shadow-md)', padding: '4px 0', zIndex: 210,
           }}
         >
-          {MENU_CATEGORIES.map((c) => (
+          {menuCategories.map((c) => (
             <button
               key={c}
               role="menuitem"
@@ -74,7 +72,7 @@ function CategoriesNav({ nav, active = false }) {
                 background: hover === c ? 'var(--color-primary-800)' : 'none',
                 border: 'none', cursor: 'pointer', transition: 'all var(--transition-fast)',
               }}
-            >{c}</button>
+            >{categoryLabel(c)}</button>
           ))}
         </div>
       )}
@@ -83,7 +81,7 @@ function CategoriesNav({ nav, active = false }) {
 }
 
 export default function Header() {
-  const { nav, user, cartCount, cartTotal, wishCount, logout, search, setSearch } = useStore();
+  const { nav, user, cartCount, cartTotal, wishCount, logout, search, setSearch, categories } = useStore();
   const { pathname, state } = useLocation();
   const cat = state?.cat;
   // Em /produtos: categoria específica → "Categorias"; "Todos"/sem categoria → "Comprar".
@@ -157,7 +155,7 @@ export default function Header() {
         <div className="container" style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
           {navItem('Home', 'home')}
           {navItem('Comprar', 'catalog', 'comprar')}
-          <CategoriesNav nav={nav} active={active === 'categorias'} />
+          <CategoriesNav nav={nav} categories={categories} active={active === 'categorias'} />
         </div>
       </nav>
     </header>
