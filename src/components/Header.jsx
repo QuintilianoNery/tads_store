@@ -1,7 +1,7 @@
 // src/components/Header.jsx — topbar + barra principal (logo, busca, ações) + nav
 import { useState } from 'react';
 import { useLocation } from 'react-router-dom';
-import { Icon as I } from './Icon.jsx';
+import { Icon } from './Icon.jsx';
 import { useStore } from '@/context/StoreContext';
 import { fmtBRL } from '@/lib/format';
 import { categoryLabel } from '@/utils/formatters';
@@ -9,13 +9,13 @@ import { categoryLabel } from '@/utils/formatters';
 const LOGO = '/images/tads_store_logo_cropped.png';
 
 function ActionBtn({ children, onClick, count }) {
-  const [h, setH] = useState(false);
+  const [isHovered, setIsHovered] = useState(false);
   return (
     <button
       onClick={onClick}
-      onMouseEnter={() => setH(true)}
-      onMouseLeave={() => setH(false)}
-      style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 8, color: h ? 'var(--color-primary-800)' : 'var(--color-gray-700)', background: h ? 'var(--color-primary-50)' : 'none', border: 'none', borderRadius: 'var(--radius-md)', cursor: 'pointer', transition: 'all var(--transition-fast)' }}
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+      style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 8, color: isHovered ? 'var(--color-primary-800)' : 'var(--color-gray-700)', background: isHovered ? 'var(--color-primary-50)' : 'none', border: 'none', borderRadius: 'var(--radius-md)', cursor: 'pointer', transition: 'all var(--transition-fast)' }}
     >
       {children}
       {count > 0 && (
@@ -36,12 +36,12 @@ const CATEGORY_GROUPS = [
 // Item de grupo: pai não-clicável; submenu aparece ao passar o mouse.
 function CategoryGroupNav({ nav, label, slugs }) {
   const [open, setOpen] = useState(false);
-  const [hover, setHover] = useState(null);
+  const [hoveredSlug, setHoveredSlug] = useState(null);
   return (
     <div
       style={{ position: 'relative' }}
       onMouseEnter={() => setOpen(true)}
-      onMouseLeave={() => { setOpen(false); setHover(null); }}
+      onMouseLeave={() => { setOpen(false); setHoveredSlug(null); }}
     >
       <span
         style={{
@@ -53,7 +53,7 @@ function CategoryGroupNav({ nav, label, slugs }) {
         }}
       >
         {label}
-        <I.ChevronDown size={14} style={{ transform: open ? 'rotate(180deg)' : 'none', transition: 'transform var(--transition-fast)' }} />
+        <Icon.ChevronDown size={14} style={{ transform: open ? 'rotate(180deg)' : 'none', transition: 'transform var(--transition-fast)' }} />
       </span>
       {open && (
         <div
@@ -64,21 +64,21 @@ function CategoryGroupNav({ nav, label, slugs }) {
             boxShadow: 'var(--shadow-md)', padding: '4px 0', zIndex: 210,
           }}
         >
-          {slugs.map((c) => (
+          {slugs.map((slug) => (
             <button
-              key={c}
+              key={slug}
               role="menuitem"
-              onClick={() => { nav('catalog', c); setOpen(false); }}
-              onMouseEnter={() => setHover(c)}
-              onMouseLeave={() => setHover(null)}
+              onClick={() => { nav('catalog', slug); setOpen(false); }}
+              onMouseEnter={() => setHoveredSlug(slug)}
+              onMouseLeave={() => setHoveredSlug(null)}
               style={{
                 display: 'block', width: '100%', textAlign: 'left', padding: '8px 16px',
                 fontFamily: 'var(--font-display)', fontSize: 'var(--text-sm)',
-                color: hover === c ? '#fff' : 'var(--color-primary-200)',
-                background: hover === c ? 'var(--color-primary-800)' : 'none',
+                color: hoveredSlug === slug ? '#fff' : 'var(--color-primary-200)',
+                background: hoveredSlug === slug ? 'var(--color-primary-800)' : 'none',
                 border: 'none', cursor: 'pointer', transition: 'all var(--transition-fast)',
               }}
-            >{categoryLabel(c)}</button>
+            >{categoryLabel(slug)}</button>
           ))}
         </div>
       )}
@@ -111,7 +111,7 @@ export default function Header() {
         <div className="container" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           {user ? (
             <span style={{ display: 'flex', alignItems: 'center', gap: 8, color: 'var(--color-primary-100)' }}>
-              <I.User size={14} /> Olá, <strong style={{ color: '#fff' }}>{user.name}</strong>!
+              <Icon.User size={14} /> Olá, <strong style={{ color: '#fff' }}>{user.name}</strong>!
             </span>
           ) : (
             <button onClick={() => nav('login')} style={{ color: 'var(--color-primary-100)', background: 'none', border: 'none', cursor: 'pointer', fontSize: 'var(--text-xs)' }}>Sign up / Login</button>
@@ -135,17 +135,17 @@ export default function Header() {
               style={{ flex: 1, padding: '12px 16px', border: '1.5px solid var(--color-gray-300)', borderRight: 'none', borderRadius: 'var(--radius-md) 0 0 var(--radius-md)', fontSize: 'var(--text-sm)', color: 'var(--color-gray-800)', outline: 'none' }}
             />
             <button type="submit" style={{ padding: '12px 16px', background: 'var(--color-primary-800)', color: '#fff', border: 'none', borderRadius: '0 var(--radius-md) var(--radius-md) 0', display: 'flex', alignItems: 'center', cursor: 'pointer' }}>
-              <I.Search size={18} />
+              <Icon.Search size={18} />
             </button>
           </form>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
-            <ActionBtn onClick={() => nav('wishlist')} count={wishCount}><I.Heart size={22} /></ActionBtn>
+            <ActionBtn onClick={() => nav('wishlist')} count={wishCount}><Icon.Heart size={22} /></ActionBtn>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <ActionBtn onClick={() => nav('cart')} count={cartCount}><I.Cart size={22} /></ActionBtn>
+              <ActionBtn onClick={() => nav('cart')} count={cartCount}><Icon.Cart size={22} /></ActionBtn>
               <span style={{ fontFamily: 'var(--font-display)', fontSize: 'var(--text-sm)', fontWeight: 'var(--font-semibold)', color: 'var(--color-primary-800)', whiteSpace: 'nowrap' }}>{fmtBRL(cartTotal)}</span>
             </div>
-            <ActionBtn onClick={() => nav(user ? 'account' : 'login')}><I.User size={22} /></ActionBtn>
+            <ActionBtn onClick={() => nav(user ? 'account' : 'login')}><Icon.User size={22} /></ActionBtn>
           </div>
         </div>
       </div>
@@ -154,8 +154,8 @@ export default function Header() {
       <nav style={{ background: 'var(--color-primary-900)', borderTop: '1px solid var(--color-primary-700)' }}>
         <div className="container" style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
           {navItem('Home', 'home')}
-          {CATEGORY_GROUPS.map((g) => (
-            <CategoryGroupNav key={g.label} nav={nav} label={g.label} slugs={g.slugs} />
+          {CATEGORY_GROUPS.map((group) => (
+            <CategoryGroupNav key={group.label} nav={nav} label={group.label} slugs={group.slugs} />
           ))}
         </div>
       </nav>

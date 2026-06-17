@@ -48,16 +48,18 @@ export function StoreProvider({ children }) {
     let active = true;
     (async () => {
       try {
-        const [prodData, catData] = await Promise.all([getAllProducts(), getCategories()]);
+        const [productsResponse, categoriesResponse] = await Promise.all([getAllProducts(), getCategories()]);
         if (!active) return;
         // Mantém apenas os produtos das categorias permitidas.
-        const allowedProducts = (prodData.products ?? []).filter((p) => ALLOWED_CATEGORIES.has(p.category));
+        const allowedProducts = (productsResponse.products ?? []).filter((product) =>
+          ALLOWED_CATEGORIES.has(product.category)
+        );
         setProducts(allowedProducts);
         // /products/categories pode devolver strings ou objetos { slug, name, url }.
-        const slugs = (catData ?? [])
-          .map((c) => (typeof c === 'string' ? c : c.slug))
+        const allowedSlugs = (categoriesResponse ?? [])
+          .map((category) => (typeof category === 'string' ? category : category.slug))
           .filter((slug) => ALLOWED_CATEGORIES.has(slug));
-        setCategories(['Todos', ...slugs]);
+        setCategories(['Todos', ...allowedSlugs]);
       } catch (err) {
         console.error('Falha ao carregar catálogo do DummyJSON:', err);
       } finally {
@@ -85,31 +87,42 @@ export function StoreProvider({ children }) {
     window.scrollTo(0, 0);
   }, [navigate]);
 
-  const addToCart = useCallback((p, qty = 1) => {
-    setCart((c) => ({ ...c, [p.id]: { product: p, qty: (c[p.id]?.qty || 0) + qty } }));
+  const addToCart = useCallback((product, qty = 1) => {
+    setCart((prevCart) => ({
+      ...prevCart,
+      [product.id]: { product, qty: (prevCart[product.id]?.qty || 0) + qty },
+    }));
   }, []);
 
   const setQty = useCallback((id, qty) => {
-    setCart((c) => {
-      if (qty <= 0) { const n = { ...c }; delete n[id]; return n; }
-      return { ...c, [id]: { ...c[id], qty } };
+    setCart((prevCart) => {
+      if (qty <= 0) {
+        const nextCart = { ...prevCart };
+        delete nextCart[id];
+        return nextCart;
+      }
+      return { ...prevCart, [id]: { ...prevCart[id], qty } };
     });
   }, []);
 
   const removeItem = useCallback((id) => {
-    setCart((c) => { const n = { ...c }; delete n[id]; return n; });
+    setCart((prevCart) => {
+      const nextCart = { ...prevCart };
+      delete nextCart[id];
+      return nextCart;
+    });
   }, []);
 
   const toggleWish = useCallback((id) => {
-    setWish((w) => ({ ...w, [id]: !w[id] }));
+    setWish((prevWish) => ({ ...prevWish, [id]: !prevWish[id] }));
   }, []);
 
   const clearCart = useCallback(() => setCart({}), []);
   const login = useCallback((name) => { setUser({ name }); nav('home'); }, [nav]);
   const logout = useCallback(() => { setUser(null); nav('home'); }, [nav]);
 
-  const cartCount = Object.values(cart).reduce((s, it) => s + it.qty, 0);
-  const cartTotal = Object.values(cart).reduce((s, it) => s + finalPrice(it.product) * it.qty, 0);
+  const cartCount = Object.values(cart).reduce((total, item) => total + item.qty, 0);
+  const cartTotal = Object.values(cart).reduce((total, item) => total + finalPrice(item.product) * item.qty, 0);
   const wishCount = Object.values(wish).filter(Boolean).length;
 
   const value = useMemo(() => ({
@@ -122,9 +135,9 @@ export function StoreProvider({ children }) {
 }
 
 export function useStore() {
-  const ctx = useContext(StoreContext);
-  if (!ctx) throw new Error('useStore deve ser usado dentro de <StoreProvider>');
-  return ctx;
+  const store = useContext(StoreContext);
+  if (!store) throw new Error('useStore deve ser usado dentro de <StoreProvider>');
+  return store;
 }
 
 export default StoreContext;
