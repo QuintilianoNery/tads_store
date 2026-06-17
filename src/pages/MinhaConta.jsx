@@ -1,6 +1,6 @@
 // src/pages/MinhaConta.jsx
 import { NavLink, Outlet, useNavigate } from 'react-router-dom'
-import { LayoutDashboard, ShoppingBag, Download, MapPin, User, LogOut } from 'lucide-react'
+import { LayoutDashboard, ShoppingBag, MapPin, User, LogOut } from 'lucide-react'
 import useAuthStore from '@/store/authStore'
 import styles from './MinhaConta.module.css'
 

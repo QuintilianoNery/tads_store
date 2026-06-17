@@ -1,7 +1,7 @@
 // src/pages/Detalhe.jsx
 import { useState, useCallback } from 'react'
 import { useParams, Link, useNavigate } from 'react-router-dom'
-import { Heart, ShoppingCart, ChevronLeft, ChevronRight, Minus, Plus, Star } from 'lucide-react'
+import { Heart, ShoppingCart, ChevronLeft, ChevronRight, Minus, Plus } from 'lucide-react'
 import Button from '@/components/ui/Button/Button'
 import Badge from '@/components/ui/Badge/Badge'
 import StarRating from '@/components/ui/StarRating/StarRating'
