@@ -8,6 +8,21 @@ import { finalPrice } from '@/lib/format';
 
 const StoreContext = createContext(null);
 
+// Únicas categorias exibidas na loja (slugs do DummyJSON). Produtos e categorias
+// fora desta lista são descartados ao carregar o catálogo.
+const ALLOWED_CATEGORIES = new Set([
+  'laptops',
+  'mobile-accessories',
+  'smartphones',
+  'tablets',
+  'sports-accessories',
+  'sunglasses',
+  'mens-watches',
+  'womens-watches',
+  'motorcycle',
+  'vehicle',
+]);
+
 // Mapeia os nomes de rota do protótipo para os caminhos do react-router.
 const ROUTE_PATH = {
   home: '/',
@@ -35,9 +50,13 @@ export function StoreProvider({ children }) {
       try {
         const [prodData, catData] = await Promise.all([getAllProducts(), getCategories()]);
         if (!active) return;
-        setProducts(prodData.products ?? []);
+        // Mantém apenas os produtos das categorias permitidas.
+        const allowedProducts = (prodData.products ?? []).filter((p) => ALLOWED_CATEGORIES.has(p.category));
+        setProducts(allowedProducts);
         // /products/categories pode devolver strings ou objetos { slug, name, url }.
-        const slugs = (catData ?? []).map((c) => (typeof c === 'string' ? c : c.slug));
+        const slugs = (catData ?? [])
+          .map((c) => (typeof c === 'string' ? c : c.slug))
+          .filter((slug) => ALLOWED_CATEGORIES.has(slug));
         setCategories(['Todos', ...slugs]);
       } catch (err) {
         console.error('Falha ao carregar catálogo do DummyJSON:', err);
