@@ -2,7 +2,7 @@
 // Mercado Pago aparece apenas como apresentação — sem integração real.
 import React, { useState, useMemo } from 'react';
 import { Button, Input } from '@/components/ds';
-import { Icon as I } from '@/components/Icon.jsx';
+import { Icon } from '@/components/Icon.jsx';
 import { useStore } from '@/context/StoreContext';
 import { fmtBRL, finalPrice } from '@/lib/format';
 
@@ -10,16 +10,16 @@ function Stepper({ step }) {
   const steps = ['Entrega', 'Pagamento', 'Confirmação'];
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 32, flexWrap: 'wrap' }}>
-      {steps.map((s, i) => {
-        const done = i < step, active = i === step;
+      {steps.map((stepLabel, i) => {
+        const isComplete = i < step, isActive = i === step;
         return (
-          <React.Fragment key={s}>
+          <React.Fragment key={stepLabel}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               <span style={{ width: 26, height: 26, borderRadius: 'var(--radius-full)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 'var(--text-xs)', fontWeight: 'var(--font-bold)', fontFamily: 'var(--font-display)',
-                background: done || active ? 'var(--color-primary-700)' : 'var(--color-gray-200)', color: done || active ? '#fff' : 'var(--color-gray-500)' }}>
-                {done ? '✓' : i + 1}
+                background: isComplete || isActive ? 'var(--color-primary-700)' : 'var(--color-gray-200)', color: isComplete || isActive ? '#fff' : 'var(--color-gray-500)' }}>
+                {isComplete ? '✓' : i + 1}
               </span>
-              <span style={{ fontSize: 'var(--text-sm)', fontWeight: active ? 'var(--font-bold)' : 'var(--font-medium)', color: active ? 'var(--color-gray-900)' : 'var(--color-gray-500)' }}>{s}</span>
+              <span style={{ fontSize: 'var(--text-sm)', fontWeight: isActive ? 'var(--font-bold)' : 'var(--font-medium)', color: isActive ? 'var(--color-gray-900)' : 'var(--color-gray-500)' }}>{stepLabel}</span>
             </div>
             {i < steps.length - 1 && <span style={{ width: 28, height: 2, background: 'var(--color-gray-200)' }} />}
           </React.Fragment>
@@ -33,7 +33,7 @@ function FieldRow({ children, cols }) {
   return <div style={{ display: 'grid', gridTemplateColumns: cols || '1fr', gap: 14 }}>{children}</div>;
 }
 
-function PayOption({ id, icon, title, sub, selected, onSelect }) {
+function PayOption({ id, icon, title, subtitle, selected, onSelect }) {
   return (
     <button type="button" onClick={() => onSelect(id)}
       style={{ display: 'flex', alignItems: 'center', gap: 12, textAlign: 'left', width: '100%', padding: '14px 16px', cursor: 'pointer', borderRadius: 'var(--radius-md)',
@@ -42,7 +42,7 @@ function PayOption({ id, icon, title, sub, selected, onSelect }) {
       <span style={{ color: selected ? 'var(--color-primary-700)' : 'var(--color-gray-500)' }}>{icon}</span>
       <div style={{ flex: 1 }}>
         <div style={{ fontSize: 'var(--text-sm)', fontWeight: 'var(--font-bold)', color: 'var(--color-gray-900)' }}>{title}</div>
-        <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-gray-500)' }}>{sub}</div>
+        <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-gray-500)' }}>{subtitle}</div>
       </div>
       <span style={{ width: 18, height: 18, borderRadius: 'var(--radius-full)', border: '2px solid ' + (selected ? 'var(--color-primary-700)' : 'var(--color-gray-300)'), display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
         {selected && <span style={{ width: 8, height: 8, borderRadius: 'var(--radius-full)', background: 'var(--color-primary-700)' }} />}
@@ -51,11 +51,11 @@ function PayOption({ id, icon, title, sub, selected, onSelect }) {
   );
 }
 
-function Panel({ n, title, children }) {
+function Panel({ stepNumber, title, children }) {
   return (
     <section style={{ background: '#fff', border: '1px solid var(--color-gray-100)', borderRadius: 'var(--radius-lg)', padding: 24, boxShadow: 'var(--shadow-sm)' }}>
       <h2 style={{ fontSize: 'var(--text-lg)', color: 'var(--color-gray-900)', marginBottom: 18, display: 'flex', alignItems: 'center', gap: 10 }}>
-        <span style={{ width: 24, height: 24, borderRadius: 'var(--radius-full)', background: 'var(--color-gray-900)', color: '#fff', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 'var(--text-xs)', fontFamily: 'var(--font-display)' }}>{n}</span>
+        <span style={{ width: 24, height: 24, borderRadius: 'var(--radius-full)', background: 'var(--color-gray-900)', color: '#fff', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 'var(--text-xs)', fontFamily: 'var(--font-display)' }}>{stepNumber}</span>
         {title}
       </h2>
       {children}
@@ -75,33 +75,33 @@ function SumRow({ label, value, highlight }) {
 export default function Checkout() {
   const { nav, cart, clearCart } = useStore();
   const items = Object.values(cart || {});
-  const [pay, setPay] = useState('card');
-  const [done, setDone] = useState(false);
-  const subtotal = items.reduce((s, it) => s + finalPrice(it.product) * it.qty, 0);
-  const frete = items.length ? (subtotal > 300 ? 0 : 29.9) : 0;
-  const desconto = pay === 'pix' ? +(subtotal * 0.05).toFixed(2) : 0;
-  const total = subtotal + frete - desconto;
-  const orderNo = useMemo(() => 'TADS-' + Math.floor(100000 + Math.random() * 899999), []);
+  const [paymentMethod, setPaymentMethod] = useState('card');
+  const [orderConfirmed, setOrderConfirmed] = useState(false);
+  const subtotal = items.reduce((total, item) => total + finalPrice(item.product) * item.qty, 0);
+  const shippingCost = items.length ? (subtotal > 300 ? 0 : 29.9) : 0;
+  const pixDiscount = paymentMethod === 'pix' ? +(subtotal * 0.05).toFixed(2) : 0;
+  const orderTotal = subtotal + shippingCost - pixDiscount;
+  const orderNumber = useMemo(() => 'TADS-' + Math.floor(100000 + Math.random() * 899999), []);
 
-  if (done) {
+  if (orderConfirmed) {
     return (
       <div className="container" style={{ padding: '64px 0', maxWidth: 560, textAlign: 'center' }}>
         <div style={{ width: 80, height: 80, borderRadius: 'var(--radius-full)', background: 'var(--color-success)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 22px', boxShadow: 'var(--shadow-lg)', animation: 'fadeIn 0.4s ease' }}>
-          <I.Check size={42} />
+          <Icon.Check size={42} />
         </div>
         <h1 style={{ fontSize: 'var(--text-3xl)', color: 'var(--color-gray-900)', marginBottom: 10 }}>Pedido confirmado!</h1>
         <p style={{ color: 'var(--color-gray-500)', marginBottom: 24 }}>Obrigado pela compra. Enviamos a confirmação por e-mail e você pode acompanhar o rastreio a qualquer momento.</p>
         <div style={{ background: '#fff', border: '1px solid var(--color-gray-100)', borderRadius: 'var(--radius-lg)', padding: 24, boxShadow: 'var(--shadow-sm)', textAlign: 'left', marginBottom: 28 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: 12, marginBottom: 12, borderBottom: '1px solid var(--color-gray-100)' }}>
             <span style={{ color: 'var(--color-gray-500)', fontSize: 'var(--text-sm)' }}>Número do pedido</span>
-            <strong style={{ fontFamily: 'var(--font-display)', color: 'var(--color-gray-900)' }}>{orderNo}</strong>
+            <strong style={{ fontFamily: 'var(--font-display)', color: 'var(--color-gray-900)' }}>{orderNumber}</strong>
           </div>
           <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
             <span style={{ color: 'var(--color-gray-500)', fontSize: 'var(--text-sm)' }}>Total pago</span>
-            <strong style={{ fontFamily: 'var(--font-display)', color: 'var(--color-gray-900)' }}>{fmtBRL(total)}</strong>
+            <strong style={{ fontFamily: 'var(--font-display)', color: 'var(--color-gray-900)' }}>{fmtBRL(orderTotal)}</strong>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: 'var(--color-success)', fontSize: 'var(--text-sm)', fontWeight: 'var(--font-semibold)' }}>
-            <I.Truck size={16} /> Entrega estimada: 3 dias úteis
+            <Icon.Truck size={16} /> Entrega estimada: 3 dias úteis
           </div>
         </div>
         <Button variant="primary" size="lg" onClick={() => { clearCart && clearCart(); nav('home'); }}>Voltar para a loja</Button>
@@ -114,7 +114,7 @@ export default function Checkout() {
       <div className="container" style={{ padding: '64px 0', textAlign: 'center' }}>
         <h1 style={{ fontSize: 'var(--text-3xl)', color: 'var(--color-gray-900)', marginBottom: 12 }}>Nada para finalizar</h1>
         <p style={{ color: 'var(--color-gray-500)', marginBottom: 24 }}>Seu carrinho está vazio. Adicione produtos antes do checkout.</p>
-        <Button variant="primary" size="lg" onClick={() => nav('catalog')}>Ver produtos <I.ArrowRight size={18} /></Button>
+        <Button variant="primary" size="lg" onClick={() => nav('catalog')}>Ver produtos <Icon.ArrowRight size={18} /></Button>
       </div>
     );
   }
@@ -122,16 +122,16 @@ export default function Checkout() {
   return (
     <div className="container" style={{ padding: '36px 0 64px' }}>
       <button onClick={() => nav('cart')} style={{ display: 'flex', alignItems: 'center', gap: 4, color: 'var(--color-gray-500)', background: 'none', border: 'none', cursor: 'pointer', fontSize: 'var(--text-sm)', marginBottom: 16 }}>
-        <I.ChevronLeft size={16} /> Voltar ao carrinho
+        <Icon.ChevronLeft size={16} /> Voltar ao carrinho
       </button>
       <h1 style={{ fontSize: 'var(--text-3xl)', color: 'var(--color-gray-900)', marginBottom: 20 }}>Finalizar compra</h1>
       <Stepper step={1} />
 
-      <form onSubmit={(e) => { e.preventDefault(); setDone(true); window.scrollTo(0, 0); }}>
+      <form onSubmit={(e) => { e.preventDefault(); setOrderConfirmed(true); window.scrollTo(0, 0); }}>
         <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) 360px', gap: 28, alignItems: 'start' }}>
           {/* esquerda: formulários */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
-            <Panel n="1" title="Dados e entrega">
+            <Panel stepNumber="1" title="Dados e entrega">
               <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
                 <FieldRow cols="1fr 1fr">
                   <Input label="Nome completo" placeholder="Seu nome" required />
@@ -152,13 +152,13 @@ export default function Checkout() {
               </div>
             </Panel>
 
-            <Panel n="2" title="Forma de pagamento">
+            <Panel stepNumber="2" title="Forma de pagamento">
               <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                <PayOption id="card" icon={<I.CreditCard size={22} />} title="Cartão de crédito" sub="Em até 12x sem juros" selected={pay === 'card'} onSelect={setPay} />
-                <PayOption id="pix" icon={<I.Zap size={22} />} title="Pix" sub="5% de desconto · aprovação imediata" selected={pay === 'pix'} onSelect={setPay} />
-                <PayOption id="boleto" icon={<I.Tag size={22} />} title="Boleto bancário" sub="Vence em 3 dias úteis" selected={pay === 'boleto'} onSelect={setPay} />
+                <PayOption id="card" icon={<Icon.CreditCard size={22} />} title="Cartão de crédito" subtitle="Em até 12x sem juros" selected={paymentMethod === 'card'} onSelect={setPaymentMethod} />
+                <PayOption id="pix" icon={<Icon.Zap size={22} />} title="Pix" subtitle="5% de desconto · aprovação imediata" selected={paymentMethod === 'pix'} onSelect={setPaymentMethod} />
+                <PayOption id="boleto" icon={<Icon.Tag size={22} />} title="Boleto bancário" subtitle="Vence em 3 dias úteis" selected={paymentMethod === 'boleto'} onSelect={setPaymentMethod} />
               </div>
-              {pay === 'card' && (
+              {paymentMethod === 'card' && (
                 <div style={{ marginTop: 16, display: 'flex', flexDirection: 'column', gap: 14 }}>
                   <Input label="Número do cartão" placeholder="0000 0000 0000 0000" />
                   <FieldRow cols="1fr 1fr 1fr">
@@ -168,13 +168,13 @@ export default function Checkout() {
                   </FieldRow>
                 </div>
               )}
-              {pay === 'pix' && (
+              {paymentMethod === 'pix' && (
                 <p style={{ marginTop: 14, fontSize: 'var(--text-sm)', color: 'var(--color-deal-text)', background: 'var(--color-deal-soft)', border: '1px solid #fde68a', borderRadius: 'var(--radius-md)', padding: '12px 14px' }}>
                   Você ganha <strong>5% de desconto</strong> pagando com Pix. O código será gerado na confirmação.
                 </p>
               )}
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 16, fontSize: 'var(--text-xs)', color: 'var(--color-gray-500)' }}>
-                <I.Lock size={14} /> Pagamento processado com segurança via <strong style={{ color: 'var(--color-gray-700)' }}>Mercado Pago</strong>.
+                <Icon.Lock size={14} /> Pagamento processado com segurança via <strong style={{ color: 'var(--color-gray-700)' }}>Mercado Pago</strong>.
               </div>
             </Panel>
           </div>
@@ -184,36 +184,36 @@ export default function Checkout() {
             <div style={{ background: '#fff', border: '1px solid var(--color-gray-100)', borderRadius: 'var(--radius-lg)', padding: 22, boxShadow: 'var(--shadow-sm)' }}>
               <h2 style={{ fontSize: 'var(--text-lg)', color: 'var(--color-gray-900)', marginBottom: 16 }}>Resumo do pedido</h2>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginBottom: 16, maxHeight: 220, overflowY: 'auto' }}>
-                {items.map(({ product: p, qty }) => (
-                  <div key={p.id} style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+                {items.map(({ product, qty }) => (
+                  <div key={product.id} style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
                     <div style={{ position: 'relative', flexShrink: 0 }}>
-                      <img src={p.thumbnail} alt="" style={{ width: 52, height: 52, objectFit: 'cover', borderRadius: 'var(--radius-md)' }} />
+                      <img src={product.thumbnail} alt="" style={{ width: 52, height: 52, objectFit: 'cover', borderRadius: 'var(--radius-md)' }} />
                       <span style={{ position: 'absolute', top: -6, right: -6, minWidth: 18, height: 18, padding: '0 5px', borderRadius: 'var(--radius-full)', background: 'var(--color-primary-700)', color: '#fff', fontSize: '0.625rem', fontWeight: 'var(--font-bold)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{qty}</span>
                     </div>
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <p style={{ fontSize: 'var(--text-xs)', fontWeight: 'var(--font-semibold)', color: 'var(--color-gray-800)', lineHeight: 1.3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.title}</p>
-                      <span style={{ fontSize: 'var(--text-xs)', color: 'var(--color-gray-500)' }}>{fmtBRL(finalPrice(p))}</span>
+                      <p style={{ fontSize: 'var(--text-xs)', fontWeight: 'var(--font-semibold)', color: 'var(--color-gray-800)', lineHeight: 1.3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{product.title}</p>
+                      <span style={{ fontSize: 'var(--text-xs)', color: 'var(--color-gray-500)' }}>{fmtBRL(finalPrice(product))}</span>
                     </div>
-                    <span style={{ fontFamily: 'var(--font-display)', fontSize: 'var(--text-sm)', fontWeight: 'var(--font-bold)', color: 'var(--color-gray-900)', whiteSpace: 'nowrap' }}>{fmtBRL(finalPrice(p) * qty)}</span>
+                    <span style={{ fontFamily: 'var(--font-display)', fontSize: 'var(--text-sm)', fontWeight: 'var(--font-bold)', color: 'var(--color-gray-900)', whiteSpace: 'nowrap' }}>{fmtBRL(finalPrice(product) * qty)}</span>
                   </div>
                 ))}
               </div>
               <div style={{ borderTop: '1px solid var(--color-gray-100)', paddingTop: 14, display: 'flex', flexDirection: 'column', gap: 6 }}>
                 <SumRow label="Subtotal" value={fmtBRL(subtotal)} />
-                <SumRow label="Frete" value={frete === 0 ? 'Grátis' : fmtBRL(frete)} highlight={frete === 0} />
-                {desconto > 0 && <SumRow label="Desconto Pix (5%)" value={'- ' + fmtBRL(desconto)} highlight />}
+                <SumRow label="Frete" value={shippingCost === 0 ? 'Grátis' : fmtBRL(shippingCost)} highlight={shippingCost === 0} />
+                {pixDiscount > 0 && <SumRow label="Desconto Pix (5%)" value={'- ' + fmtBRL(pixDiscount)} highlight />}
                 <div style={{ borderTop: '1px solid var(--color-gray-200)', margin: '8px 0' }} />
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
                   <span style={{ fontSize: 'var(--text-base)', fontWeight: 'var(--font-bold)', color: 'var(--color-gray-900)' }}>Total</span>
-                  <span style={{ fontFamily: 'var(--font-display)', fontSize: 'var(--text-2xl)', fontWeight: 'var(--font-extrabold)', color: 'var(--color-gray-900)' }}>{fmtBRL(total)}</span>
+                  <span style={{ fontFamily: 'var(--font-display)', fontSize: 'var(--text-2xl)', fontWeight: 'var(--font-extrabold)', color: 'var(--color-gray-900)' }}>{fmtBRL(orderTotal)}</span>
                 </div>
               </div>
               <div style={{ marginTop: 18 }}>
-                <Button type="submit" variant="deal" size="lg" fullWidth><I.Lock size={18} /> Pagar com segurança</Button>
+                <Button type="submit" variant="deal" size="lg" fullWidth><Icon.Lock size={18} /> Pagar com segurança</Button>
               </div>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 16px', background: 'var(--color-primary-50)', borderRadius: 'var(--radius-md)', color: 'var(--color-primary-800)', fontSize: 'var(--text-xs)' }}>
-              <I.Shield size={18} /> Compra 100% protegida. Seus dados são criptografados.
+              <Icon.Shield size={18} /> Compra 100% protegida. Seus dados são criptografados.
             </div>
           </aside>
         </div>

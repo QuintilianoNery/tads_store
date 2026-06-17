@@ -14,14 +14,14 @@ export function Eyebrow({ children, color }) {
 export function ProductGrid({ products, nav, addToCart, toggleWish, wish, minWidth = 230 }) {
   return (
     <div style={{ display: 'grid', gridTemplateColumns: `repeat(auto-fill, minmax(${minWidth}px, 1fr))`, gap: 24 }}>
-      {products.map((p) => (
-        <div key={p.id} onClick={() => nav('detail', p.id)} style={{ cursor: 'pointer' }}>
+      {products.map((product) => (
+        <div key={product.id} onClick={() => nav('detail', product.id)} style={{ cursor: 'pointer' }}>
           <ProductCard
-            title={p.title} category={categoryLabel(p.category)} price={finalPrice(p)} originalPrice={p.price}
-            discountPercentage={p.discountPercentage} rating={p.rating} thumbnail={p.thumbnail}
-            wishlisted={!!wish[p.id]}
-            onAddToCart={(e) => { e && e.stopPropagation && e.stopPropagation(); addToCart(p); }}
-            onToggleWishlist={(e) => { e && e.stopPropagation && e.stopPropagation(); toggleWish(p.id); }}
+            title={product.title} category={categoryLabel(product.category)} price={finalPrice(product)} originalPrice={product.price}
+            discountPercentage={product.discountPercentage} rating={product.rating} thumbnail={product.thumbnail}
+            wishlisted={!!wish[product.id]}
+            onAddToCart={(e) => { e && e.stopPropagation && e.stopPropagation(); addToCart(product); }}
+            onToggleWishlist={(e) => { e && e.stopPropagation && e.stopPropagation(); toggleWish(product.id); }}
           />
         </div>
       ))}

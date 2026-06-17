@@ -1,18 +1,18 @@
 // src/components/Footer.jsx — rodapé com marca, links, contato e redes sociais
 import { useState } from 'react';
-import { Icon as I } from './Icon.jsx';
+import { Icon } from './Icon.jsx';
 import { useStore } from '@/context/StoreContext';
 
 const LOGO = '/images/tads_store_logo_cropped.png';
 
 function FooterLink({ children, onClick }) {
-  const [h, setH] = useState(false);
+  const [isHovered, setIsHovered] = useState(false);
   return (
     <button
       onClick={onClick}
-      onMouseEnter={() => setH(true)}
-      onMouseLeave={() => setH(false)}
-      style={{ display: 'block', textAlign: 'left', color: h ? '#fff' : 'var(--color-primary-200)', background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontSize: 'var(--text-sm)', lineHeight: 2.1, transition: 'color var(--transition-fast)' }}
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+      style={{ display: 'block', textAlign: 'left', color: isHovered ? '#fff' : 'var(--color-primary-200)', background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontSize: 'var(--text-sm)', lineHeight: 2.1, transition: 'color var(--transition-fast)' }}
     >
       {children}
     </button>
@@ -20,12 +20,12 @@ function FooterLink({ children, onClick }) {
 }
 
 function SocialBtn({ children, label }) {
-  const [h, setH] = useState(false);
+  const [isHovered, setIsHovered] = useState(false);
   return (
     <a
       href="#" aria-label={label} onClick={(e) => e.preventDefault()}
-      onMouseEnter={() => setH(true)} onMouseLeave={() => setH(false)}
-      style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 38, height: 38, borderRadius: 'var(--radius-full)', color: '#fff', background: h ? 'var(--color-accent)' : 'var(--color-primary-700)', textDecoration: 'none', transition: 'background var(--transition-fast)' }}
+      onMouseEnter={() => setIsHovered(true)} onMouseLeave={() => setIsHovered(false)}
+      style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 38, height: 38, borderRadius: 'var(--radius-full)', color: '#fff', background: isHovered ? 'var(--color-accent)' : 'var(--color-primary-700)', textDecoration: 'none', transition: 'background var(--transition-fast)' }}
     >
       {children}
     </a>
@@ -50,10 +50,10 @@ export default function Footer() {
             Sua loja de tecnologia e acessórios. Produtos selecionados, entrega rápida e atendimento que faz a diferença.
           </p>
           <div style={{ display: 'flex', gap: 10, marginTop: 20 }}>
-            <SocialBtn label="Facebook"><I.Facebook size={18} /></SocialBtn>
-            <SocialBtn label="Instagram"><I.Instagram size={18} /></SocialBtn>
-            <SocialBtn label="YouTube"><I.Youtube size={18} /></SocialBtn>
-            <SocialBtn label="WhatsApp"><I.Whatsapp size={18} /></SocialBtn>
+            <SocialBtn label="Facebook"><Icon.Facebook size={18} /></SocialBtn>
+            <SocialBtn label="Instagram"><Icon.Instagram size={18} /></SocialBtn>
+            <SocialBtn label="YouTube"><Icon.Youtube size={18} /></SocialBtn>
+            <SocialBtn label="WhatsApp"><Icon.Whatsapp size={18} /></SocialBtn>
           </div>
         </div>
 
@@ -79,15 +79,15 @@ export default function Footer() {
         <div>
           <h4 style={colTitle}>Contato</h4>
           <div style={contactRow}>
-            <span style={{ color: 'var(--color-accent)', flexShrink: 0, marginTop: 1 }}><I.MapPin size={18} /></span>
+            <span style={{ color: 'var(--color-accent)', flexShrink: 0, marginTop: 1 }}><Icon.MapPin size={18} /></span>
             <span>Av. das Nações, 1500 — Sala 42<br />Centro — São Paulo/SP</span>
           </div>
           <div style={contactRow}>
-            <span style={{ color: 'var(--color-accent)', flexShrink: 0, marginTop: 1 }}><I.Phone size={18} /></span>
+            <span style={{ color: 'var(--color-accent)', flexShrink: 0, marginTop: 1 }}><Icon.Phone size={18} /></span>
             <span>(11) 4002-8922</span>
           </div>
           <div style={contactRow}>
-            <span style={{ color: 'var(--color-accent)', flexShrink: 0, marginTop: 1 }}><I.Mail size={18} /></span>
+            <span style={{ color: 'var(--color-accent)', flexShrink: 0, marginTop: 1 }}><Icon.Mail size={18} /></span>
             <span>contato@tadsstore.com.br</span>
           </div>
         </div>
