@@ -3,7 +3,11 @@ import { useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import { Icon as I } from './Icon.jsx';
 import { useStore } from '@/context/StoreContext';
+import { CATEGORIES } from '@/data/products';
 import { fmtBRL } from '@/lib/format';
+
+// Submenu de Categorias: todas as categorias cadastradas, exceto "Todos"
+const MENU_CATEGORIES = CATEGORIES.filter((c) => c !== 'Todos');
 
 const LOGO = '/images/tads_store_logo_cropped.png';
 
@@ -24,19 +28,79 @@ function ActionBtn({ children, onClick, count }) {
   );
 }
 
+// Item "Categorias": pai não-clicável; submenu aparece ao passar o mouse.
+function CategoriesNav({ nav, active = false }) {
+  const [open, setOpen] = useState(false);
+  const [hover, setHover] = useState(null);
+  const highlight = open || active;
+  return (
+    <div
+      style={{ position: 'relative' }}
+      onMouseEnter={() => setOpen(true)}
+      onMouseLeave={() => { setOpen(false); setHover(null); }}
+    >
+      <span
+        style={{
+          display: 'flex', alignItems: 'center', gap: 4, padding: '12px 16px',
+          fontFamily: 'var(--font-display)', fontSize: 'var(--text-sm)', fontWeight: 'var(--font-medium)',
+          letterSpacing: '0.025em', color: highlight ? '#fff' : 'var(--color-primary-200)',
+          borderBottom: '2px solid ' + (highlight ? 'var(--color-accent)' : 'transparent'),
+          cursor: 'default', transition: 'all var(--transition-fast)',
+        }}
+      >
+        Categorias
+        <I.ChevronDown size={14} style={{ transform: open ? 'rotate(180deg)' : 'none', transition: 'transform var(--transition-fast)' }} />
+      </span>
+      {open && (
+        <div
+          role="menu"
+          style={{
+            position: 'absolute', top: '100%', left: 0, minWidth: '12rem',
+            background: 'var(--color-primary-900)', borderTop: '2px solid var(--color-accent)',
+            boxShadow: 'var(--shadow-md)', padding: '4px 0', zIndex: 210,
+          }}
+        >
+          {MENU_CATEGORIES.map((c) => (
+            <button
+              key={c}
+              role="menuitem"
+              onClick={() => { nav('catalog', c); setOpen(false); }}
+              onMouseEnter={() => setHover(c)}
+              onMouseLeave={() => setHover(null)}
+              style={{
+                display: 'block', width: '100%', textAlign: 'left', padding: '8px 16px',
+                fontFamily: 'var(--font-display)', fontSize: 'var(--text-sm)',
+                color: hover === c ? '#fff' : 'var(--color-primary-200)',
+                background: hover === c ? 'var(--color-primary-800)' : 'none',
+                border: 'none', cursor: 'pointer', transition: 'all var(--transition-fast)',
+              }}
+            >{c}</button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function Header() {
   const { nav, user, cartCount, cartTotal, wishCount, logout, search, setSearch } = useStore();
-  const { pathname } = useLocation();
-  const route = pathname === '/' ? 'home' : pathname.startsWith('/produto') ? 'catalog' : '';
+  const { pathname, state } = useLocation();
+  const cat = state?.cat;
+  // Em /produtos: categoria específica → "Categorias"; "Todos"/sem categoria → "Comprar".
+  const active = pathname === '/'
+    ? 'home'
+    : pathname.startsWith('/produto')
+      ? (cat && cat !== 'Todos' ? 'categorias' : 'comprar')
+      : '';
 
-  const navItem = (label, to) => (
+  const navItem = (label, to, key = to) => (
     <button
       onClick={() => nav(to)}
       style={{
         display: 'block', padding: '12px 16px', fontFamily: 'var(--font-display)',
         fontSize: 'var(--text-sm)', fontWeight: 'var(--font-medium)', letterSpacing: '0.025em',
-        color: route === to ? '#fff' : 'var(--color-primary-200)', background: 'none', border: 'none',
-        borderBottom: '2px solid ' + (route === to ? 'var(--color-accent)' : 'transparent'),
+        color: active === key ? '#fff' : 'var(--color-primary-200)', background: 'none', border: 'none',
+        borderBottom: '2px solid ' + (active === key ? 'var(--color-accent)' : 'transparent'),
         cursor: 'pointer', transition: 'all var(--transition-fast)',
       }}
     >{label}</button>
@@ -92,8 +156,8 @@ export default function Header() {
       <nav style={{ background: 'var(--color-primary-900)', borderTop: '1px solid var(--color-primary-700)' }}>
         <div className="container" style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
           {navItem('Home', 'home')}
-          {navItem('Comprar', 'catalog')}
-          {navItem('Categorias', 'catalog')}
+          {navItem('Comprar', 'catalog', 'comprar')}
+          <CategoriesNav nav={nav} active={active === 'categorias'} />
         </div>
       </nav>
     </header>
