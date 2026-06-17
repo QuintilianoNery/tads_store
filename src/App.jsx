@@ -1,77 +1,66 @@
 // src/App.jsx
-// Configuração central de rotas da TADS Store
-import { BrowserRouter, Routes, Route } from 'react-router-dom'
-import { useEffect } from 'react'
+// Roteamento da TADS Store — porta fiel do protótipo (TADS Store offline).
+// Estado de carrinho/favoritos/usuário/busca em memória via StoreProvider.
+// Telas carregadas sob demanda (code-splitting) com fallback usando o Spinner do DS.
+import { lazy, Suspense } from 'react'
+import { BrowserRouter, Routes, Route, Outlet } from 'react-router-dom'
 
-// Layout
-import Layout from '@/components/layout/Layout/Layout'
-import RotaPrivada from '@/components/layout/RotaPrivada/RotaPrivada'
+import { StoreProvider } from '@/context/StoreContext'
+import { Spinner } from '@/components/ds'
+import Header from '@/components/Header'
+import Footer from '@/components/Footer'
 
-// Páginas públicas
-import Home           from '@/pages/Home'
-import Produtos       from '@/pages/Produtos'
-import Detalhe        from '@/pages/Detalhe'
-import Login          from '@/pages/Login'
-import Carrinho       from '@/pages/Carrinho'
-import ListaDesejos   from '@/pages/ListaDesejos'
-import Checkout       from '@/pages/Checkout'
-import PedidoRecebido from '@/pages/PedidoRecebido'
-import NaoEncontrado  from '@/pages/NaoEncontrado'
+const Home     = lazy(() => import('@/screens/Home'))
+const Catalog  = lazy(() => import('@/screens/Catalog'))
+const Detail   = lazy(() => import('@/screens/Detail'))
+const Cart     = lazy(() => import('@/screens/Cart'))
+const Checkout = lazy(() => import('@/screens/Checkout'))
+const Login    = lazy(() => import('@/screens/Login'))
+const Account  = lazy(() => import('@/screens/Account'))
+const Wishlist = lazy(() => import('@/screens/Wishlist'))
 
-// Páginas protegidas
-import MinhaConta, { Painel } from '@/pages/MinhaConta'
-import Pedidos        from '@/pages/conta/Pedidos'
-import Enderecos      from '@/pages/conta/Enderecos'
-import DetalhesConta  from '@/pages/conta/DetalhesConta'
+// Fallback centralizado enquanto a tela carrega.
+function ScreenFallback() {
+  return (
+    <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '60vh' }}>
+      <Spinner size={40} />
+    </div>
+  )
+}
 
-// Auth store
-import useAuthStore from '@/store/authStore'
+// Shell: Header (sticky) → conteúdo da rota → Footer.
+function Layout() {
+  return (
+    <>
+      <Header />
+      <main>
+        <Suspense fallback={<ScreenFallback />}>
+          <Outlet />
+        </Suspense>
+      </main>
+      <Footer />
+    </>
+  )
+}
 
 function App() {
-  const initAuth = useAuthStore((s) => s.initAuth)
-
-  // Inicializa o listener do Supabase Auth uma única vez
-  useEffect(() => {
-    const unsubscribe = initAuth()
-    return unsubscribe
-  }, [initAuth])
-
   return (
     <BrowserRouter>
-      <Routes>
-        <Route element={<Layout />}>
-          {/* ── Rotas públicas ── */}
-          <Route index               element={<Home />} />
-          <Route path="produtos"     element={<Produtos />} />
-          <Route path="produto/:id"  element={<Detalhe />} />
-          <Route path="login"        element={<Login />} />
-          <Route path="carrinho"     element={<Carrinho />} />
-          <Route path="lista-de-desejos" element={<ListaDesejos />} />
-          <Route path="checkout"     element={<Checkout />} />
-          <Route path="pedido-recebido" element={<PedidoRecebido />} />
-
-          {/* ── Rotas protegidas — Minha Conta ── */}
-          <Route
-            path="minha-conta"
-            element={
-              <RotaPrivada>
-                <MinhaConta />
-              </RotaPrivada>
-            }
-          >
-            {/* Painel (index da área logada) */}
-            <Route index element={<Painel />} />
-
-            {/* Sub-rotas da conta */}
-            <Route path="pedidos"  element={<Pedidos />} />
-            <Route path="enderecos" element={<Enderecos />} />
-            <Route path="detalhes" element={<DetalhesConta />} />
+      <StoreProvider>
+        <Routes>
+          <Route element={<Layout />}>
+            <Route index                  element={<Home />} />
+            <Route path="produtos"        element={<Catalog />} />
+            <Route path="produto/:id"     element={<Detail />} />
+            <Route path="carrinho"        element={<Cart />} />
+            <Route path="checkout"        element={<Checkout />} />
+            <Route path="login"           element={<Login />} />
+            <Route path="lista-de-desejos" element={<Wishlist />} />
+            <Route path="minha-conta"     element={<Account />} />
+            <Route path="*"               element={<Home />} />
           </Route>
-
-          {/* ── 404 ── */}
-          <Route path="*" element={<NaoEncontrado />} />
-        </Route>
-      </Routes>
+        </Routes>
+      </StoreProvider>
     </BrowserRouter>
   )
 }
