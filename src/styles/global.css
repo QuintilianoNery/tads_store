@@ -23,10 +23,25 @@ body {
   font-size: var(--text-base);
   font-weight: var(--font-regular);
   line-height: var(--leading-normal);
-  color: var(--color-gray-800);
-  background-color: var(--color-gray-50);
+  color: var(--text-body);
+  background-color: var(--surface-page);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+/* App shell — sticky footer layout */
+html,
+body,
+#root {
+  min-height: 100%;
+}
+#root {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+#root > main {
+  flex: 1;
 }
 
 img,
@@ -63,9 +78,10 @@ ol {
 
 h1, h2, h3, h4, h5, h6 {
   font-family: var(--font-display);
-  font-weight: var(--font-bold);
+  font-weight: var(--font-extrabold);
   line-height: var(--leading-tight);
-  color: var(--color-gray-900);
+  letter-spacing: var(--tracking-tight);
+  color: var(--text-heading);
 }
 
 /* ── Utilitários globais ─────────────────────────────────── */

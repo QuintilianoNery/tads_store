@@ -1,7 +1,7 @@
 // src/components/layout/Header/Header.jsx
 import { useState, useRef, useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { Search, ShoppingCart, Heart, User, LogOut, Menu, X, ChevronDown } from 'lucide-react'
+import { Search, ShoppingCart, Heart, User, LogOut, Menu, X } from 'lucide-react'
 import useAuthStore from '@/store/authStore'
 import useCartStore from '@/store/cartStore'
 import useWishlistStore from '@/store/wishlistStore'
