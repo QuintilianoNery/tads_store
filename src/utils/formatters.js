@@ -52,6 +52,46 @@ export function slugToLabel(slug) {
 }
 
 /**
+ * Tradução pt-BR dos slugs de categoria do DummyJSON (categorias em inglês).
+ */
+const CATEGORY_PT_BR = {
+  beauty: 'Beleza',
+  fragrances: 'Perfumes',
+  furniture: 'Móveis',
+  groceries: 'Mercearia',
+  'home-decoration': 'Decoração',
+  'kitchen-accessories': 'Acessórios de Cozinha',
+  laptops: 'Notebooks',
+  'mens-shirts': 'Camisas Masculinas',
+  'mens-shoes': 'Calçados Masculinos',
+  'mens-watches': 'Relógios Masculinos',
+  'mobile-accessories': 'Acessórios para Celular',
+  motorcycle: 'Motocicletas',
+  'skin-care': 'Cuidados com a Pele',
+  smartphones: 'Smartphones',
+  'sports-accessories': 'Acessórios Esportivos',
+  sunglasses: 'Óculos de Sol',
+  tablets: 'Tablets',
+  tops: 'Blusas',
+  vehicle: 'Veículos',
+  'womens-bags': 'Bolsas Femininas',
+  'womens-dresses': 'Vestidos Femininos',
+  'womens-jewellery': 'Joias Femininas',
+  'womens-shoes': 'Calçados Femininos',
+  'womens-watches': 'Relógios Femininos',
+}
+
+/**
+ * Rótulo de categoria em pt-BR. Usa o mapa de tradução e cai no slugToLabel
+ * para qualquer slug novo que ainda não tenha tradução.
+ * @example categoryLabel("mens-watches") → "Relógios Masculinos"
+ */
+export function categoryLabel(slug) {
+  if (!slug) return ''
+  return CATEGORY_PT_BR[slug] ?? slugToLabel(slug)
+}
+
+/**
  * Gera classe CSS de estrelas com base no rating (0–5).
  */
 export function getRatingStars(rating) {

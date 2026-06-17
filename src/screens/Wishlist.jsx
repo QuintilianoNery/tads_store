@@ -2,6 +2,7 @@
 import { ProductCard } from '@/components/ds';
 import { useStore } from '@/context/StoreContext';
 import { finalPrice } from '@/lib/format';
+import { categoryLabel } from '@/utils/formatters';
 
 export default function Wishlist() {
   const { nav, addToCart, toggleWish, wish, products } = useStore();
@@ -23,7 +24,7 @@ export default function Wishlist() {
         {list.map((p) => (
           <div key={p.id} onClick={() => nav('detail', p.id)} style={{ cursor: 'pointer' }}>
             <ProductCard
-              title={p.title} category={p.category} price={finalPrice(p)} originalPrice={p.price}
+              title={p.title} category={categoryLabel(p.category)} price={finalPrice(p)} originalPrice={p.price}
               discountPercentage={p.discountPercentage} rating={p.rating} thumbnail={p.thumbnail}
               wishlisted={!!wish[p.id]}
               onAddToCart={(e) => { e && e.stopPropagation(); addToCart(p); }}

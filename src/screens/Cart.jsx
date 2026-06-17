@@ -3,6 +3,7 @@ import { Button } from '@/components/ds';
 import { Icon as I } from '@/components/Icon.jsx';
 import { useStore } from '@/context/StoreContext';
 import { fmtBRL, finalPrice } from '@/lib/format';
+import { categoryLabel } from '@/utils/formatters';
 
 function Row({ label, value, big }) {
   return (
@@ -38,7 +39,7 @@ export default function Cart() {
             <div key={p.id} style={{ display: 'flex', gap: 16, background: '#fff', border: '1px solid var(--color-gray-100)', borderRadius: 'var(--radius-lg)', padding: 16, boxShadow: 'var(--shadow-sm)' }}>
               <img src={p.thumbnail} alt={p.title} style={{ width: 88, height: 88, objectFit: 'cover', borderRadius: 'var(--radius-md)', flexShrink: 0 }} />
               <div style={{ flex: 1, minWidth: 0 }}>
-                <span style={{ fontSize: 'var(--text-xs)', color: 'var(--color-accent)', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 'var(--font-bold)' }}>{p.category}</span>
+                <span style={{ fontSize: 'var(--text-xs)', color: 'var(--color-accent)', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 'var(--font-bold)' }}>{categoryLabel(p.category)}</span>
                 <h3 style={{ fontSize: 'var(--text-sm)', fontWeight: 'var(--font-semibold)', color: 'var(--color-gray-800)', margin: '2px 0 8px' }}>{p.title}</h3>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
                   <div style={{ display: 'flex', alignItems: 'center', border: '1.5px solid var(--color-gray-200)', borderRadius: 'var(--radius-md)' }}>

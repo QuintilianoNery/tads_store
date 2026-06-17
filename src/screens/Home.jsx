@@ -2,16 +2,16 @@
 import { Button } from '@/components/ds';
 import { Icon as I } from '@/components/Icon.jsx';
 import { useStore } from '@/context/StoreContext';
-import { CATEGORIES } from '@/data/products';
+import { categoryLabel } from '@/utils/formatters';
 import { Eyebrow, ProductGrid } from './shared.jsx';
 
 const catImage = (products, cat) => (products.find((p) => p.category === cat) || {}).thumbnail;
 
 export default function Home() {
-  const { nav, addToCart, toggleWish, wish, products } = useStore();
+  const { nav, addToCart, toggleWish, wish, products, categories } = useStore();
   const featured = products.slice(0, 8);
   const deals = products.filter((p) => p.discountPercentage > 0).slice(0, 4);
-  const cats = CATEGORIES.filter((c) => c !== 'Todos');
+  const cats = categories.filter((c) => c !== 'Todos').slice(0, 4);
   const feats = [
     { icon: <I.Truck size={26} />, h: 'Entrega rápida', p: 'Receba em até 3 dias úteis' },
     { icon: <I.Shield size={26} />, h: 'Compra segura', p: 'Seus dados sempre protegidos' },
@@ -76,7 +76,7 @@ export default function Home() {
                 <img src={catImage(products, c)} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                 <span style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to top, rgba(15,23,42,0.78) 0%, rgba(15,23,42,0.12) 60%, transparent 100%)' }} />
                 <span style={{ position: 'absolute', left: 16, bottom: 14, color: '#fff', fontSize: 'var(--text-lg)', fontWeight: 'var(--font-bold)', display: 'flex', alignItems: 'center', gap: 6 }}>
-                  {c} <I.ArrowRight size={16} />
+                  {categoryLabel(c)} <I.ArrowRight size={16} />
                 </span>
               </button>
             ))}

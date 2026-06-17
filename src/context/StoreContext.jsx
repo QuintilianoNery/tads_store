@@ -1,9 +1,9 @@
 // src/context/StoreContext.jsx
 // Estado global em memória (carrinho, favoritos, usuário, busca) + navegação.
 // Espelha exatamente o modelo do protótipo TADS Store (offline): sem API/Supabase.
-import { createContext, useContext, useState, useCallback, useMemo } from 'react';
+import { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { PRODUCTS } from '@/data/products';
+import { getAllProducts, getCategories } from '@/services/productService';
 import { finalPrice } from '@/lib/format';
 
 const StoreContext = createContext(null);
@@ -22,7 +22,31 @@ const ROUTE_PATH = {
 
 export function StoreProvider({ children }) {
   const navigate = useNavigate();
-  const products = PRODUCTS;
+
+  // Catálogo (produtos + categorias) vindo do DummyJSON, carregado uma vez no mount.
+  // Filtragem, busca e detalhe continuam acontecendo localmente sobre essa lista.
+  const [products, setProducts] = useState([]);
+  const [categories, setCategories] = useState(['Todos']);
+  const [loadingCatalog, setLoadingCatalog] = useState(true);
+
+  useEffect(() => {
+    let active = true;
+    (async () => {
+      try {
+        const [prodData, catData] = await Promise.all([getAllProducts(), getCategories()]);
+        if (!active) return;
+        setProducts(prodData.products ?? []);
+        // /products/categories pode devolver strings ou objetos { slug, name, url }.
+        const slugs = (catData ?? []).map((c) => (typeof c === 'string' ? c : c.slug));
+        setCategories(['Todos', ...slugs]);
+      } catch (err) {
+        console.error('Falha ao carregar catálogo do DummyJSON:', err);
+      } finally {
+        if (active) setLoadingCatalog(false);
+      }
+    })();
+    return () => { active = false; };
+  }, []);
 
   const [user, setUser] = useState(null);
   const [cart, setCart] = useState({});
@@ -70,10 +94,10 @@ export function StoreProvider({ children }) {
   const wishCount = Object.values(wish).filter(Boolean).length;
 
   const value = useMemo(() => ({
-    products, user, cart, wish, search, setSearch,
+    products, categories, loadingCatalog, user, cart, wish, search, setSearch,
     nav, addToCart, setQty, removeItem, toggleWish, clearCart, login, logout,
     cartCount, cartTotal, wishCount,
-  }), [products, user, cart, wish, search, nav, addToCart, setQty, removeItem, toggleWish, clearCart, login, logout, cartCount, cartTotal, wishCount]);
+  }), [products, categories, loadingCatalog, user, cart, wish, search, nav, addToCart, setQty, removeItem, toggleWish, clearCart, login, logout, cartCount, cartTotal, wishCount]);
 
   return <StoreContext.Provider value={value}>{children}</StoreContext.Provider>;
 }

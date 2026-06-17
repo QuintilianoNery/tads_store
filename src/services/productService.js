@@ -25,6 +25,15 @@ export async function getProducts({ limit = 12, skip = 0 } = {}) {
 }
 
 /**
+ * Retorna TODOS os produtos com os campos completos (description, images, etc.).
+ * Usado pelo catálogo em memória (StoreContext) que filtra/busca localmente.
+ * limit=0 no DummyJSON desativa a paginação e devolve a lista inteira.
+ */
+export async function getAllProducts() {
+  return apiFetch('/products?limit=0')
+}
+
+/**
  * Busca produtos por texto.
  * @param {string} query - Termo de busca
  */

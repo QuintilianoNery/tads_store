@@ -3,8 +3,8 @@ import { useState, useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 import { StarRating } from '@/components/ds';
 import { useStore } from '@/context/StoreContext';
-import { CATEGORIES } from '@/data/products';
 import { finalPrice } from '@/lib/format';
+import { categoryLabel } from '@/utils/formatters';
 import { ProductGrid } from './shared.jsx';
 
 function FilterGroup({ title, children }) {
@@ -17,14 +17,14 @@ function FilterGroup({ title, children }) {
 }
 
 export default function Catalog() {
-  const { nav, addToCart, toggleWish, wish, products, search } = useStore();
+  const { nav, addToCart, toggleWish, wish, products, search, categories } = useStore();
   const initialCat = useLocation().state?.cat || null;
   const [cat, setCat] = useState(initialCat || 'Todos');
   const [sort, setSort] = useState('relevancia');
   const [minRating, setMinRating] = useState(0);
   const [onlyDeals, setOnlyDeals] = useState(false);
   useEffect(() => { if (initialCat) setCat(initialCat); }, [initialCat]);
-  const cats = CATEGORIES;
+  const cats = categories;
 
   let list = cat === 'Todos' ? products.slice() : products.filter((p) => p.category === cat);
   if (search) list = list.filter((p) => p.title.toLowerCase().includes(search.toLowerCase()));
@@ -40,8 +40,8 @@ export default function Catalog() {
   return (
     <div className="container" style={{ padding: '32px 0 64px' }}>
       <div style={{ marginBottom: 22 }}>
-        <span style={{ fontSize: 'var(--text-xs)', color: 'var(--color-gray-400)' }}>Início / <span style={{ color: 'var(--color-gray-600)' }}>{cat}</span></span>
-        <h1 style={{ fontSize: 'var(--text-3xl)', color: 'var(--color-gray-900)', marginTop: 4 }}>{cat === 'Todos' ? 'Todos os produtos' : cat}</h1>
+        <span style={{ fontSize: 'var(--text-xs)', color: 'var(--color-gray-400)' }}>Início / <span style={{ color: 'var(--color-gray-600)' }}>{categoryLabel(cat)}</span></span>
+        <h1 style={{ fontSize: 'var(--text-3xl)', color: 'var(--color-gray-900)', marginTop: 4 }}>{cat === 'Todos' ? 'Todos os produtos' : categoryLabel(cat)}</h1>
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: '236px minmax(0, 1fr)', gap: 28, alignItems: 'start' }}>
@@ -53,7 +53,7 @@ export default function Catalog() {
                 <button key={c} onClick={() => setCat(c)}
                   style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '7px 10px', borderRadius: 'var(--radius-md)', border: 'none', cursor: 'pointer', textAlign: 'left', transition: 'all var(--transition-fast)',
                     background: cat === c ? 'var(--color-primary-50)' : 'transparent', color: cat === c ? 'var(--color-primary-800)' : 'var(--color-gray-600)', fontWeight: cat === c ? 'var(--font-bold)' : 'var(--font-medium)', fontSize: 'var(--text-sm)' }}>
-                  {c} <span style={{ fontSize: 'var(--text-xs)', color: 'var(--color-gray-400)' }}>{catCount(c)}</span>
+                  {categoryLabel(c)} <span style={{ fontSize: 'var(--text-xs)', color: 'var(--color-gray-400)' }}>{catCount(c)}</span>
                 </button>
               ))}
             </div>
