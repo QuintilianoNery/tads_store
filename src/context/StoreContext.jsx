@@ -101,6 +101,10 @@ export function StoreProvider({ children }) {
   const [user, setUser] = useState(null);
   const [authLoading, setAuthLoading] = useState(false);
   const [authError, setAuthError] = useState(null);
+  // Verdadeiro até a 1ª resposta do Supabase sobre a sessão (restauração
+  // assíncrona no reload). Evita redirecionar de uma rota protegida antes
+  // de saber se existe sessão.
+  const [authInitializing, setAuthInitializing] = useState(true);
   const [cart, setCart] = useState({});
   const [wish, setWish] = useState({});
   const [search, setSearch] = useState('');
@@ -111,6 +115,7 @@ export function StoreProvider({ children }) {
   useEffect(() => {
     const unsubscribe = onAuthStateChange((session) => {
       setUser(mapUser(session?.user));
+      setAuthInitializing(false);
     });
     return unsubscribe;
   }, []);
@@ -164,12 +169,12 @@ export function StoreProvider({ children }) {
   const clearAuthError = useCallback(() => setAuthError(null), []);
 
   // Login com e-mail + senha. Retorna { success, error }.
+  // A navegação fica a cargo de quem chama (ex.: retornar à rota pretendida).
   const login = useCallback(async (email, password) => {
     setAuthLoading(true); setAuthError(null);
     try {
       const { user: supaUser } = await signIn({ email, password });
       setUser(mapUser(supaUser));
-      nav('home');
       return { success: true };
     } catch (err) {
       const message = parseAuthError(err.message);
@@ -178,20 +183,20 @@ export function StoreProvider({ children }) {
     } finally {
       setAuthLoading(false);
     }
-  }, [nav]);
+  }, []);
 
   // Cadastro com nome + e-mail + senha. Se o projeto exigir confirmação de
   // e-mail, o Supabase não devolve sessão; caso contrário, já loga na hora.
+  // `loggedIn` indica que já há sessão (a navegação fica a cargo de quem chama).
   const register = useCallback(async (fullName, email, password) => {
     setAuthLoading(true); setAuthError(null);
     try {
       const data = await signUp({ fullName, email, password });
       if (data?.session) {
         setUser(mapUser(data.user));
-        nav('home');
-        return { success: true, needsConfirmation: false };
+        return { success: true, needsConfirmation: false, loggedIn: true };
       }
-      return { success: true, needsConfirmation: true };
+      return { success: true, needsConfirmation: true, loggedIn: false };
     } catch (err) {
       const message = parseAuthError(err.message);
       setAuthError(message);
@@ -199,7 +204,7 @@ export function StoreProvider({ children }) {
     } finally {
       setAuthLoading(false);
     }
-  }, [nav]);
+  }, []);
 
   const logout = useCallback(async () => {
     try {
@@ -233,9 +238,9 @@ export function StoreProvider({ children }) {
   const value = useMemo(() => ({
     products, categories, loadingCatalog, user, cart, wish, search, setSearch,
     nav, addToCart, setQty, removeItem, toggleWish, clearCart,
-    login, register, logout, authLoading, authError, clearAuthError,
+    login, register, logout, authLoading, authError, authInitializing, clearAuthError,
     cartCount, cartTotal, wishCount,
-  }), [products, categories, loadingCatalog, user, cart, wish, search, nav, addToCart, setQty, removeItem, toggleWish, clearCart, login, register, logout, authLoading, authError, clearAuthError, cartCount, cartTotal, wishCount]);
+  }), [products, categories, loadingCatalog, user, cart, wish, search, nav, addToCart, setQty, removeItem, toggleWish, clearCart, login, register, logout, authLoading, authError, authInitializing, clearAuthError, cartCount, cartTotal, wishCount]);
 
   return <StoreContext.Provider value={value}>{children}</StoreContext.Provider>;
 }

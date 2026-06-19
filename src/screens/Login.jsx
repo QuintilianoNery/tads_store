@@ -1,6 +1,7 @@
 // src/screens/Login.jsx — formulários de login + criar conta (Supabase Auth)
 // Etapa 2: validação inline, toggle de senha e feedback acessível.
 import { useState } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { Button, Input } from '@/components/ds';
 import { Icon } from '@/components/Icon.jsx';
 import { useStore } from '@/context/StoreContext';
@@ -22,6 +23,10 @@ function PasswordToggle({ shown, onToggle }) {
 
 export default function Login() {
   const { login, register, authLoading, authError, clearAuthError } = useStore();
+  const navigate = useNavigate();
+  const location = useLocation();
+  // Rota que o usuário tentou acessar antes de ser mandado ao login.
+  const from = location.state?.from?.pathname ?? '/';
 
   // ── Login ──────────────────────────────────────────────────
   const [email, setEmail] = useState('');
@@ -50,7 +55,8 @@ export default function Login() {
     const errs = validateLogin();
     if (Object.keys(errs).length > 0) { setLoginErrors(errs); return; }
     setLoginErrors({});
-    await login(email, pwd);
+    const { success } = await login(email, pwd);
+    if (success) navigate(from, { replace: true });
   }
 
   function validateRegister() {
@@ -68,14 +74,15 @@ export default function Login() {
     const errs = validateRegister();
     if (Object.keys(errs).length > 0) { setRegErrors(errs); return; }
     setRegErrors({});
-    const { success, needsConfirmation } = await register(regName, regEmail, regPwd);
+    const { success, needsConfirmation, loggedIn } = await register(regName, regEmail, regPwd);
     if (success) {
-      setSuccessMsg(
-        needsConfirmation
-          ? 'Cadastro realizado! Verifique seu e-mail para confirmar a conta.'
-          : 'Cadastro realizado com sucesso!'
-      );
       setRegName(''); setRegEmail(''); setRegPwd('');
+      if (loggedIn) {
+        // Cadastro já autenticado (confirmação de e-mail desativada).
+        navigate(from, { replace: true });
+        return;
+      }
+      setSuccessMsg('Cadastro realizado! Verifique seu e-mail para confirmar a conta.');
     }
   }
 
