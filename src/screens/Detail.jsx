@@ -106,9 +106,10 @@ function ReviewsBlock({ rating }) {
 }
 
 export default function Detail() {
-  const { nav, addToCart, toggleWish, wish, products } = useStore();
+  const { nav, addToCart, toggleWish, wish, products, cart } = useStore();
   const { id } = useParams();
   const [qty, setQty] = useState(1);
+  const [stockAlert, setStockAlert] = useState('');
   const productId = Number(id);
   const product = products.find((item) => item.id === productId) || products[0];
   // Catálogo ainda carregando (lista vazia): evita quebrar antes do fetch concluir.
@@ -121,6 +122,24 @@ export default function Detail() {
   }
   const discountedPrice = finalPrice(product);
   const images = galleryFor(product);
+  const isOut = product.stock <= 0;
+  const cartQty = cart[product.id]?.qty || 0;        // já no carrinho
+  const maxAddable = Math.max(0, product.stock - cartQty); // ainda pode adicionar
+
+  // Tenta adicionar `qty` ao carrinho, respeitando o estoque disponível.
+  const handleAdd = (goToCart) => {
+    if (cartQty + qty > product.stock) {
+      setStockAlert(
+        maxAddable > 0
+          ? `Você já tem ${cartQty} no carrinho. Só há ${product.stock} em estoque — pode adicionar mais ${maxAddable}.`
+          : `Você já tem o máximo disponível (${product.stock}) no carrinho.`
+      );
+      return;
+    }
+    setStockAlert('');
+    addToCart(product, qty);
+    if (goToCart) nav('cart');
+  };
   const amountSaved = product.discountPercentage > 0 ? product.price - discountedPrice : 0;
   const sameCategoryProducts = products
     .filter((item) => item.id !== product.id && item.category === product.category)
@@ -148,8 +167,8 @@ export default function Detail() {
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 22 }}>
             <StarRating rating={product.rating} size={18} />
             <span style={{ fontSize: 'var(--text-sm)', color: 'var(--color-gray-500)' }}>{product.rating} · 248 avaliações</span>
-            <span style={{ fontSize: 'var(--text-sm)', color: product.stock < 10 ? 'var(--color-danger)' : 'var(--color-success)', fontWeight: 'var(--font-semibold)' }}>
-              {product.stock < 10 ? `Últimas ${product.stock} unidades` : 'Em estoque'}
+            <span style={{ fontSize: 'var(--text-sm)', color: isOut || product.stock < 10 ? 'var(--color-danger)' : 'var(--color-success)', fontWeight: 'var(--font-semibold)' }}>
+              {isOut ? 'Indisponível' : product.stock < 10 ? `Últimas ${product.stock} unidades` : 'Em estoque'}
             </span>
           </div>
 
@@ -169,15 +188,28 @@ export default function Detail() {
           <p style={{ color: 'var(--color-gray-600)', lineHeight: 1.7, marginBottom: 26 }}>{product.description}</p>
 
           {/* Qty + CTAs */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 12 }}>
-            <div style={{ display: 'flex', alignItems: 'center', border: '1.5px solid var(--color-gray-300)', borderRadius: 'var(--radius-md)', overflow: 'hidden' }}>
-              <button onClick={() => setQty((current) => Math.max(1, current - 1))} style={{ padding: 12, background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-gray-600)', display: 'flex' }}><Icon.Minus size={16} /></button>
-              <span style={{ width: 44, textAlign: 'center', fontFamily: 'var(--font-display)', fontWeight: 'var(--font-bold)' }}>{qty}</span>
-              <button onClick={() => setQty((current) => current + 1)} style={{ padding: 12, background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-gray-600)', display: 'flex' }}><Icon.Plus size={16} /></button>
+          {isOut && (
+            <div role="alert" style={{ display: 'flex', alignItems: 'center', gap: 8, background: '#fee2e2', color: '#b91c1c', padding: '10px 14px', borderRadius: 'var(--radius-md)', fontSize: 'var(--text-sm)', marginBottom: 14 }}>
+              <Icon.AlertCircle size={18} /> <span>Produto indisponível no momento.</span>
             </div>
-            <Button variant="deal" size="lg" onClick={() => { addToCart(product, qty); nav('cart'); }} style={{ flex: 1 }}>Comprar agora</Button>
+          )}
+          {!isOut && stockAlert && (
+            <div role="alert" aria-live="assertive" style={{ display: 'flex', alignItems: 'center', gap: 8, background: '#fef3c7', color: '#92400e', padding: '10px 14px', borderRadius: 'var(--radius-md)', fontSize: 'var(--text-sm)', marginBottom: 14 }}>
+              <Icon.AlertCircle size={18} /> <span>{stockAlert}</span>
+            </div>
+          )}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 12 }}>
+            <div style={{ display: 'flex', alignItems: 'center', border: '1.5px solid var(--color-gray-300)', borderRadius: 'var(--radius-md)', overflow: 'hidden', opacity: isOut ? 0.5 : 1 }}>
+              <button disabled={isOut} onClick={() => { setStockAlert(''); setQty((current) => Math.max(1, current - 1)); }} style={{ padding: 12, background: 'none', border: 'none', cursor: isOut ? 'not-allowed' : 'pointer', color: 'var(--color-gray-600)', display: 'flex' }}><Icon.Minus size={16} /></button>
+              <span style={{ width: 44, textAlign: 'center', fontFamily: 'var(--font-display)', fontWeight: 'var(--font-bold)' }}>{qty}</span>
+              <button disabled={isOut} onClick={() => setQty((current) => {
+                if (cartQty + current + 1 > product.stock) { setStockAlert(`Só há ${product.stock} unidade(s) em estoque${cartQty ? ` e você já tem ${cartQty} no carrinho` : ''}.`); return current; }
+                setStockAlert(''); return current + 1;
+              })} style={{ padding: 12, background: 'none', border: 'none', cursor: isOut ? 'not-allowed' : 'pointer', color: 'var(--color-gray-600)', display: 'flex' }}><Icon.Plus size={16} /></button>
+            </div>
+            <Button variant="deal" size="lg" disabled={isOut} onClick={() => handleAdd(true)} style={{ flex: 1 }}>{isOut ? 'Indisponível' : 'Comprar agora'}</Button>
           </div>
-          <Button variant="primary" size="lg" fullWidth onClick={() => addToCart(product, qty)} style={{ marginBottom: 10 }}><Icon.Cart size={18} /> Adicionar ao carrinho</Button>
+          <Button variant="primary" size="lg" fullWidth disabled={isOut} onClick={() => handleAdd(false)} style={{ marginBottom: 10 }}><Icon.Cart size={18} /> {isOut ? 'Indisponível' : 'Adicionar ao carrinho'}</Button>
           <button onClick={() => toggleWish(product.id)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, width: '100%', padding: '10px', background: 'none', border: 'none', cursor: 'pointer', color: wish[product.id] ? 'var(--color-danger)' : 'var(--color-gray-500)', fontSize: 'var(--text-sm)', fontWeight: 'var(--font-semibold)' }}>
             <Icon.Heart size={18} filled={wish[product.id]} /> {wish[product.id] ? 'Salvo nos favoritos' : 'Adicionar aos favoritos'}
           </button>

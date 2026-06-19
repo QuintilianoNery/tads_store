@@ -27,6 +27,7 @@ export default function Wishlist() {
               title={product.title} category={categoryLabel(product.category)} price={finalPrice(product)} originalPrice={product.price}
               discountPercentage={product.discountPercentage} rating={product.rating} thumbnail={product.thumbnail}
               wishlisted={!!wish[product.id]}
+              outOfStock={product.stock <= 0}
               onAddToCart={(e) => { e && e.stopPropagation(); addToCart(product); }}
               onToggleWishlist={(e) => { e && e.stopPropagation(); toggleWish(product.id); }}
             />
