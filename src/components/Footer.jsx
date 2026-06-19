@@ -95,7 +95,18 @@ export default function Footer() {
 
       <div style={{ borderTop: '1px solid var(--color-primary-700)' }}>
         <div className="container" style={{ padding: '18px 0', textAlign: 'center' }}>
-          <p style={{ fontSize: 'var(--text-xs)', color: 'var(--color-primary-300)' }}>© {year} TADS Store. Todos os direitos reservados.</p>
+          <p style={{ fontSize: 'var(--text-xs)', color: 'var(--color-primary-300)' }}>
+            © {year} TADS Store. Todos os direitos reservados - Desenvolvido por{' '}
+            <a
+              href="https://linkedin.com/in/quintilianonery"
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{ color: 'var(--color-accent)', textDecoration: 'none' }}
+            >
+              Quintiliano Nery
+            </a>{' '}
+            - Versão: {__APP_VERSION__}
+          </p>
         </div>
       </div>
     </footer>

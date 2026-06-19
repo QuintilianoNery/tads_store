@@ -2,6 +2,8 @@
 module.exports = {
   root: true,
   env: { browser: true, es2021: true, node: true },
+  // Constante injetada pelo Vite (define) — versão vinda da tag do Git.
+  globals: { __APP_VERSION__: 'readonly' },
   extends: [
     'eslint:recommended',
     'plugin:react/recommended',
