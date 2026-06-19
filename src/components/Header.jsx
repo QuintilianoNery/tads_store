@@ -140,7 +140,7 @@ export default function Header() {
           </form>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
-            <ActionBtn onClick={() => nav('wishlist')} count={wishCount}><Icon.Heart size={22} /></ActionBtn>
+            <ActionBtn onClick={() => nav('wishlist')} count={user ? wishCount : 0}><Icon.Heart size={22} /></ActionBtn>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               <ActionBtn onClick={() => nav('cart')} count={cartCount}><Icon.Cart size={22} /></ActionBtn>
               <span style={{ fontFamily: 'var(--font-display)', fontSize: 'var(--text-sm)', fontWeight: 'var(--font-semibold)', color: 'var(--color-primary-800)', whiteSpace: 'nowrap' }}>{fmtBRL(cartTotal)}</span>
