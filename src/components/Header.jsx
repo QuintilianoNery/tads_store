@@ -129,7 +129,7 @@ export default function Header() {
             <img src={LOGO} alt="TADS Store" style={{ height: 52, width: 'auto', objectFit: 'contain', display: 'block' }} />
           </button>
 
-          <form onSubmit={(e) => { e.preventDefault(); nav('catalog'); }} style={{ flex: 1, display: 'flex', maxWidth: 520 }}>
+          <form onSubmit={(e) => { e.preventDefault(); nav('catalog'); }} style={{ flex: 1, display: 'flex' }}>
             <input
               type="search" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Buscar produtos..."
               style={{ flex: 1, padding: '12px 16px', border: '1.5px solid var(--color-gray-300)', borderRight: 'none', borderRadius: 'var(--radius-md) 0 0 var(--radius-md)', fontSize: 'var(--text-sm)', color: 'var(--color-gray-800)', outline: 'none' }}
