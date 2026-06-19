@@ -38,4 +38,3 @@ pnpm-debug.log*
 lerna-debug.log*
 
 *storybook.log
-storybook-static

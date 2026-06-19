@@ -3,7 +3,23 @@ import { useState } from 'react';
 import { Button, Input, Badge } from '@/components/ds';
 import { Icon } from '@/components/Icon.jsx';
 import { useStore } from '@/context/StoreContext';
+import { changePassword } from '@/services/authService';
+import { isNotEmpty, isValidPassword, MIN_PASSWORD_LENGTH } from '@/utils/validators';
 import { fmtBRL } from '@/lib/format';
+
+// Botão de mostrar/ocultar senha — usado no rightSlot do Input.
+function PasswordToggle({ shown, onToggle }) {
+  return (
+    <button
+      type="button"
+      onClick={onToggle}
+      aria-label={shown ? 'Ocultar senha' : 'Mostrar senha'}
+      style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 4, color: 'var(--color-gray-500)', background: 'none', border: 'none', cursor: 'pointer' }}
+    >
+      {shown ? <Icon.EyeOff size={18} /> : <Icon.Eye size={18} />}
+    </button>
+  );
+}
 
 const SAMPLE_ORDERS = [
   { number: 'TADS-840127', date: '4 de junho de 2026', status: 'A caminho', statusTone: 'info', items: 2, total: 549.8 },
@@ -15,6 +31,52 @@ export default function Account() {
   const { user, nav, wishCount, logout } = useStore();
   const [activeTab, setActiveTab] = useState('pedidos');
   const name = user?.name || 'Visitante';
+
+  // ── Troca de senha ─────────────────────────────────────────
+  const [pwdForm, setPwdForm] = useState({ current: '', next: '', confirm: '' });
+  const [pwdErrors, setPwdErrors] = useState({});
+  const [pwdLoading, setPwdLoading] = useState(false);
+  const [pwdSuccess, setPwdSuccess] = useState(false);
+  const [pwdServerError, setPwdServerError] = useState('');
+  const [showPwd, setShowPwd] = useState(false);
+
+  function updatePwd(field, value) {
+    setPwdForm((f) => ({ ...f, [field]: value }));
+    setPwdErrors((e) => ({ ...e, [field]: undefined }));
+    setPwdSuccess(false);
+    setPwdServerError('');
+  }
+
+  function validatePwd() {
+    const errs = {};
+    if (!isNotEmpty(pwdForm.current)) errs.current = 'Informe sua senha atual.';
+    if (!isValidPassword(pwdForm.next)) errs.next = `Mínimo de ${MIN_PASSWORD_LENGTH} caracteres.`;
+    if (pwdForm.next !== pwdForm.confirm) errs.confirm = 'As senhas não conferem.';
+    return errs;
+  }
+
+  async function handleChangePassword(e) {
+    e.preventDefault();
+    setPwdServerError('');
+    setPwdSuccess(false);
+    const errs = validatePwd();
+    if (Object.keys(errs).length > 0) { setPwdErrors(errs); return; }
+    setPwdErrors({});
+    setPwdLoading(true);
+    try {
+      await changePassword({ email: user?.email, currentPassword: pwdForm.current, newPassword: pwdForm.next });
+      setPwdSuccess(true);
+      setPwdForm({ current: '', next: '', confirm: '' });
+    } catch (err) {
+      setPwdServerError(
+        err.message === 'CURRENT_PASSWORD_INVALID'
+          ? 'Senha atual incorreta.'
+          : 'Não foi possível alterar a senha. Tente novamente.'
+      );
+    } finally {
+      setPwdLoading(false);
+    }
+  }
   const menuItems = [
     { id: 'pedidos', label: 'Meus pedidos', icon: <Icon.Truck size={18} /> },
     { id: 'dados', label: 'Dados pessoais', icon: <Icon.User size={18} /> },
@@ -90,16 +152,62 @@ export default function Account() {
           )}
 
           {activeTab === 'dados' && (
-            <section style={{ background: '#fff', border: '1px solid var(--color-gray-100)', borderRadius: 'var(--radius-lg)', padding: 24, boxShadow: 'var(--shadow-sm)' }}>
-              <h2 style={{ fontSize: 'var(--text-xl)', color: 'var(--color-gray-900)', marginBottom: 18 }}>Dados pessoais</h2>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 16 }}>
-                <Input label="Nome completo" defaultValue={name} />
-                <Input label="E-mail" type="email" defaultValue="cliente@email.com" />
-                <Input label="CPF" defaultValue="000.000.000-00" />
-                <Input label="Telefone" defaultValue="(11) 90000-0000" />
-              </div>
-              <div style={{ marginTop: 18 }}><Button variant="primary">Salvar alterações</Button></div>
-            </section>
+            <>
+              <section style={{ background: '#fff', border: '1px solid var(--color-gray-100)', borderRadius: 'var(--radius-lg)', padding: 24, boxShadow: 'var(--shadow-sm)' }}>
+                <h2 style={{ fontSize: 'var(--text-xl)', color: 'var(--color-gray-900)', marginBottom: 18 }}>Dados pessoais</h2>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 16 }}>
+                  <Input label="Nome completo" defaultValue={name} />
+                  <Input label="E-mail" type="email" defaultValue={user?.email ?? ''} />
+                  <Input label="CPF" defaultValue="000.000.000-00" />
+                  <Input label="Telefone" defaultValue="(11) 90000-0000" />
+                </div>
+                <div style={{ marginTop: 18 }}><Button variant="primary">Salvar alterações</Button></div>
+              </section>
+
+              <section style={{ background: '#fff', border: '1px solid var(--color-gray-100)', borderRadius: 'var(--radius-lg)', padding: 24, boxShadow: 'var(--shadow-sm)', marginTop: 18 }}>
+                <h2 style={{ fontSize: 'var(--text-xl)', color: 'var(--color-gray-900)', marginBottom: 6 }}>Alterar senha</h2>
+                <p style={{ fontSize: 'var(--text-sm)', color: 'var(--color-gray-500)', marginBottom: 18 }}>
+                  Confirme sua senha atual e defina uma nova senha para a conta.
+                </p>
+
+                {pwdSuccess && (
+                  <div role="status" aria-live="polite" style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 14px', borderRadius: 'var(--radius-md)', fontSize: 'var(--text-sm)', marginBottom: 16, background: '#dcfce7', color: '#15803d' }}>
+                    <Icon.Check size={18} /> <span>Senha alterada com sucesso!</span>
+                  </div>
+                )}
+                {pwdServerError && (
+                  <div role="alert" aria-live="assertive" style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 14px', borderRadius: 'var(--radius-md)', fontSize: 'var(--text-sm)', marginBottom: 16, background: '#fee2e2', color: '#b91c1c' }}>
+                    <Icon.AlertCircle size={18} /> <span>{pwdServerError}</span>
+                  </div>
+                )}
+
+                <form onSubmit={handleChangePassword} style={{ display: 'flex', flexDirection: 'column', gap: 16, maxWidth: 420 }} noValidate>
+                  <Input
+                    label="Senha atual" type={showPwd ? 'text' : 'password'} value={pwdForm.current}
+                    onChange={(e) => updatePwd('current', e.target.value)} error={pwdErrors.current}
+                    autoComplete="current-password" required
+                    rightSlot={<PasswordToggle shown={showPwd} onToggle={() => setShowPwd((v) => !v)} />}
+                  />
+                  <Input
+                    label="Nova senha" type={showPwd ? 'text' : 'password'} value={pwdForm.next}
+                    onChange={(e) => updatePwd('next', e.target.value)} error={pwdErrors.next}
+                    helperText={`A senha deve ter pelo menos ${MIN_PASSWORD_LENGTH} caracteres.`}
+                    autoComplete="new-password" required
+                    rightSlot={<PasswordToggle shown={showPwd} onToggle={() => setShowPwd((v) => !v)} />}
+                  />
+                  <Input
+                    label="Confirmar nova senha" type={showPwd ? 'text' : 'password'} value={pwdForm.confirm}
+                    onChange={(e) => updatePwd('confirm', e.target.value)} error={pwdErrors.confirm}
+                    autoComplete="new-password" required
+                  />
+                  <div>
+                    <Button type="submit" variant="primary" disabled={pwdLoading}>
+                      {pwdLoading ? 'Salvando...' : 'Atualizar senha'}
+                    </Button>
+                  </div>
+                </form>
+              </section>
+            </>
           )}
 
           {activeTab === 'enderecos' && (

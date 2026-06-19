@@ -73,6 +73,22 @@ export async function updateProfile({ fullName, email }) {
 }
 
 /**
+ * Altera a senha do usuário logado.
+ * Confirma a identidade reautenticando com a senha atual antes de trocar.
+ * Lança Error('CURRENT_PASSWORD_INVALID') se a senha atual estiver errada.
+ */
+export async function changePassword({ email, currentPassword, newPassword }) {
+  const { error: reauthError } = await supabase.auth.signInWithPassword({
+    email,
+    password: currentPassword,
+  })
+  if (reauthError) throw new Error('CURRENT_PASSWORD_INVALID')
+
+  const { error } = await supabase.auth.updateUser({ password: newPassword })
+  if (error) throw error
+}
+
+/**
  * Envia e-mail de redefinição de senha.
  */
 export async function resetPassword(email) {
