@@ -5,27 +5,28 @@ import { StarRating } from './StarRating.jsx';
 const HEART_PATH =
   'M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z';
 
-function IconBtn({ children, active, onClick, label }) {
+function IconBtn({ children, active, onClick, label, disabled }) {
   const [hover, setHover] = React.useState(false);
   const activeBg = active ? 'var(--color-danger)' : 'var(--color-primary-800)';
   return (
     <button
-      onClick={onClick}
+      onClick={disabled ? undefined : onClick}
       aria-label={label}
+      disabled={disabled}
       onMouseEnter={() => setHover(true)}
       onMouseLeave={() => setHover(false)}
       style={{
         width: '2rem',
         height: '2rem',
-        background: hover ? activeBg : 'var(--color-white)',
-        color: hover ? 'var(--color-white)' : active ? 'var(--color-danger)' : 'var(--color-gray-600)',
+        background: !disabled && hover ? activeBg : 'var(--color-white)',
+        color: disabled ? 'var(--color-gray-300)' : hover ? 'var(--color-white)' : active ? 'var(--color-danger)' : 'var(--color-gray-600)',
         border: 'none',
         borderRadius: 'var(--radius-full)',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
         boxShadow: 'var(--shadow-md)',
-        cursor: 'pointer',
+        cursor: disabled ? 'not-allowed' : 'pointer',
         transition: 'all var(--transition-fast)',
       }}
     >
@@ -48,6 +49,7 @@ export function ProductCard({
   rating = 0,
   thumbnail,
   wishlisted = false,
+  outOfStock = false,
   onAddToCart,
   onToggleWishlist,
   style,
@@ -88,13 +90,22 @@ export function ProductCard({
               objectFit: 'cover',
               transition: 'transform var(--transition-slow)',
               transform: hover ? 'scale(1.04)' : 'none',
+              opacity: outOfStock ? 0.55 : 1,
             }}
           />
         )}
 
-        {isOnSale && (
+        {isOnSale && !outOfStock && (
           <div style={{ position: 'absolute', top: 'var(--space-3)', left: 'var(--space-3)' }}>
             <Badge variant="deal" size="sm">-{Math.round(discountPercentage)}%</Badge>
+          </div>
+        )}
+
+        {outOfStock && (
+          <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none' }}>
+            <span style={{ background: 'var(--color-gray-800)', color: 'var(--color-white)', fontFamily: 'var(--font-display)', fontSize: 'var(--text-sm)', fontWeight: 'var(--font-bold)', textTransform: 'uppercase', letterSpacing: '0.06em', padding: '6px 14px', borderRadius: 'var(--radius-full)', boxShadow: 'var(--shadow-md)' }}>
+              Esgotado
+            </span>
           </div>
         )}
 
@@ -116,7 +127,7 @@ export function ProductCard({
               <path d={HEART_PATH} />
             </svg>
           </IconBtn>
-          <IconBtn onClick={onAddToCart} label="Adicionar ao carrinho">
+          <IconBtn onClick={onAddToCart} disabled={outOfStock} label={outOfStock ? 'Produto indisponível' : 'Adicionar ao carrinho'}>
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <circle cx="8" cy="21" r="1" />
               <circle cx="19" cy="21" r="1" />

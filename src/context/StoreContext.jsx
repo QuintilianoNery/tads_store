@@ -6,6 +6,7 @@ import { useNavigate } from 'react-router-dom';
 import { getAllProducts, getCategories } from '@/services/productService';
 import { signIn, signUp, signOut, onAuthStateChange } from '@/services/authService';
 import { getFavorites, addFavorite, removeFavorite } from '@/services/favoritesService';
+import { getCart, setCartItem, removeCartItem, clearCart as clearCartRemote } from '@/services/cartService';
 import { finalPrice } from '@/lib/format';
 
 const StoreContext = createContext(null);
@@ -123,17 +124,19 @@ export function StoreProvider({ children }) {
 
   const userId = user?.id ?? null;
 
-  // Favoritos vinculados ao usuário: ao logar, descarta o estado anônimo e
-  // carrega a lista real do Supabase; ao deslogar, limpa os favoritos.
+  // Favoritos e carrinho vinculados ao usuário: ao logar, descarta o estado
+  // anônimo e carrega a lista real do Supabase; ao deslogar, limpa ambos.
   useEffect(() => {
     let active = true;
-    if (!userId) { setWish({}); return undefined; }
+    if (!userId) { setWish({}); setCart({}); return undefined; }
     (async () => {
       try {
-        const ids = await getFavorites(userId);
-        if (active) setWish(Object.fromEntries(ids.map((id) => [id, true])));
+        const [ids, cartRows] = await Promise.all([getFavorites(userId), getCart(userId)]);
+        if (!active) return;
+        setWish(Object.fromEntries(ids.map((id) => [id, true])));
+        setCart(Object.fromEntries(cartRows.map((row) => [row.product.id, { product: row.product, qty: row.qty }])));
       } catch (err) {
-        console.error('Falha ao carregar favoritos do usuário:', err);
+        console.error('Falha ao carregar favoritos/carrinho do usuário:', err);
       }
     })();
     return () => { active = false; };
@@ -152,12 +155,17 @@ export function StoreProvider({ children }) {
     window.scrollTo(0, 0);
   }, [navigate]);
 
+  // Adiciona ao carrinho (bloqueia sem estoque e limita à quantidade em estoque)
+  // e sincroniza se logado.
   const addToCart = useCallback((product, qty = 1) => {
-    setCart((prevCart) => ({
-      ...prevCart,
-      [product.id]: { product, qty: (prevCart[product.id]?.qty || 0) + qty },
-    }));
-  }, []);
+    if (product?.stock != null && product.stock <= 0) return;
+    const existing = cart[product.id]?.qty || 0;
+    let newQty = existing + qty;
+    if (product?.stock != null) newQty = Math.min(newQty, product.stock); // nunca passa do estoque
+    if (newQty === existing) return; // já está no máximo disponível
+    setCart((prevCart) => ({ ...prevCart, [product.id]: { product, qty: newQty } }));
+    if (userId) setCartItem(userId, product, newQty).catch((err) => console.error('Falha ao sincronizar carrinho:', err));
+  }, [cart, userId]);
 
   const setQty = useCallback((id, qty) => {
     setCart((prevCart) => {
@@ -168,7 +176,15 @@ export function StoreProvider({ children }) {
       }
       return { ...prevCart, [id]: { ...prevCart[id], qty } };
     });
-  }, []);
+    if (userId) {
+      if (qty <= 0) {
+        removeCartItem(userId, id).catch((err) => console.error('Falha ao sincronizar carrinho:', err));
+      } else {
+        const product = cart[id]?.product;
+        if (product) setCartItem(userId, product, qty).catch((err) => console.error('Falha ao sincronizar carrinho:', err));
+      }
+    }
+  }, [cart, userId]);
 
   const removeItem = useCallback((id) => {
     setCart((prevCart) => {
@@ -176,7 +192,8 @@ export function StoreProvider({ children }) {
       delete nextCart[id];
       return nextCart;
     });
-  }, []);
+    if (userId) removeCartItem(userId, id).catch((err) => console.error('Falha ao sincronizar carrinho:', err));
+  }, [userId]);
 
   // Alterna o favorito localmente e, se logado, sincroniza com o Supabase.
   const toggleWish = useCallback((id) => {
@@ -188,7 +205,10 @@ export function StoreProvider({ children }) {
     }
   }, [wish, userId]);
 
-  const clearCart = useCallback(() => setCart({}), []);
+  const clearCart = useCallback(() => {
+    setCart({});
+    if (userId) clearCartRemote(userId).catch((err) => console.error('Falha ao sincronizar carrinho:', err));
+  }, [userId]);
 
   // ─── Autenticação (Supabase) ────────────────────────────────
   const clearAuthError = useCallback(() => setAuthError(null), []);

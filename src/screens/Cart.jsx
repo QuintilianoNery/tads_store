@@ -1,4 +1,5 @@
 // src/screens/Cart.jsx — itens com stepper de quantidade + resumo fixo
+import { useState } from 'react';
 import { Button } from '@/components/ds';
 import { Icon } from '@/components/Icon.jsx';
 import { useStore } from '@/context/StoreContext';
@@ -16,7 +17,18 @@ function Row({ label, value, big }) {
 
 export default function Cart() {
   const { nav, cart, setQty, removeItem } = useStore();
+  const [stockAlert, setStockAlert] = useState('');
   const items = Object.values(cart);
+
+  // Aumenta a quantidade respeitando o estoque; alerta se atingir o limite.
+  const increase = (product, qty) => {
+    if (product.stock != null && qty + 1 > product.stock) {
+      setStockAlert(`"${product.title}" tem apenas ${product.stock} unidade(s) em estoque.`);
+      return;
+    }
+    setStockAlert('');
+    setQty(product.id, qty + 1);
+  };
   const subtotal = items.reduce((total, item) => total + finalPrice(item.product) * item.qty, 0);
   const shippingCost = items.length ? (subtotal > 300 ? 0 : 29.9) : 0;
 
@@ -33,6 +45,11 @@ export default function Cart() {
   return (
     <div className="container" style={{ padding: '40px 0 64px' }}>
       <h1 style={{ fontSize: 'var(--text-3xl)', color: 'var(--color-gray-900)', marginBottom: 24 }}>Carrinho</h1>
+      {stockAlert && (
+        <div role="alert" aria-live="assertive" style={{ display: 'flex', alignItems: 'center', gap: 8, background: '#fef3c7', color: '#92400e', padding: '10px 14px', borderRadius: 'var(--radius-md)', fontSize: 'var(--text-sm)', marginBottom: 16 }}>
+          <Icon.AlertCircle size={18} /> <span>{stockAlert}</span>
+        </div>
+      )}
       <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) 340px', gap: 32, alignItems: 'start' }}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
           {items.map(({ product, qty }) => (
@@ -45,7 +62,7 @@ export default function Cart() {
                   <div style={{ display: 'flex', alignItems: 'center', border: '1.5px solid var(--color-gray-200)', borderRadius: 'var(--radius-md)' }}>
                     <button onClick={() => setQty(product.id, qty - 1)} style={{ padding: 6, background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-gray-600)', display: 'flex' }}><Icon.Minus size={14} /></button>
                     <span style={{ width: 32, textAlign: 'center', fontFamily: 'var(--font-display)', fontSize: 'var(--text-sm)', fontWeight: 'var(--font-bold)' }}>{qty}</span>
-                    <button onClick={() => setQty(product.id, qty + 1)} style={{ padding: 6, background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-gray-600)', display: 'flex' }}><Icon.Plus size={14} /></button>
+                    <button onClick={() => increase(product, qty)} style={{ padding: 6, background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-gray-600)', display: 'flex' }}><Icon.Plus size={14} /></button>
                   </div>
                   <button onClick={() => removeItem(product.id)} style={{ display: 'flex', alignItems: 'center', gap: 4, color: 'var(--color-gray-400)', background: 'none', border: 'none', cursor: 'pointer', fontSize: 'var(--text-xs)' }}><Icon.Trash size={14} /> Remover</button>
                 </div>
