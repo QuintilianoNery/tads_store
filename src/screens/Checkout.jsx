@@ -1,16 +1,21 @@
-// src/screens/Checkout.jsx — checkout visual (stepper, formulário, pagamento, resumo, sucesso)
-// Mercado Pago aparece apenas como apresentação — sem integração real.
-import React, { useState, useMemo } from 'react';
-import { Button, Input } from '@/components/ds';
+// src/screens/Checkout.jsx — checkout em etapas: Entrega → Pagamento → Confirmação.
+// Rota protegida: o usuário está sempre logado. O endereço de entrega vem do
+// cadastro (Supabase) e pode ser confirmado (campos desabilitados) ou trocado.
+import React, { useState, useEffect, useMemo } from 'react';
+import { Button, Input, Spinner } from '@/components/ds';
 import { Icon } from '@/components/Icon.jsx';
 import { useStore } from '@/context/StoreContext';
+import { getAddresses, saveAddress, EMPTY_ADDRESS } from '@/services/addressService';
+import { isNotEmpty } from '@/utils/validators';
 import { fmtBRL, finalPrice } from '@/lib/format';
 
+const STEPS = ['Entrega', 'Pagamento', 'Confirmação'];
+const PAYMENT_LABELS = { card: 'Cartão de crédito', pix: 'Pix', boleto: 'Boleto bancário' };
+
 function Stepper({ step }) {
-  const steps = ['Entrega', 'Pagamento', 'Confirmação'];
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 32, flexWrap: 'wrap' }}>
-      {steps.map((stepLabel, i) => {
+      {STEPS.map((stepLabel, i) => {
         const isComplete = i < step, isActive = i === step;
         return (
           <React.Fragment key={stepLabel}>
@@ -21,7 +26,7 @@ function Stepper({ step }) {
               </span>
               <span style={{ fontSize: 'var(--text-sm)', fontWeight: isActive ? 'var(--font-bold)' : 'var(--font-medium)', color: isActive ? 'var(--color-gray-900)' : 'var(--color-gray-500)' }}>{stepLabel}</span>
             </div>
-            {i < steps.length - 1 && <span style={{ width: 28, height: 2, background: 'var(--color-gray-200)' }} />}
+            {i < STEPS.length - 1 && <span style={{ width: 28, height: 2, background: i < step ? 'var(--color-primary-700)' : 'var(--color-gray-200)' }} />}
           </React.Fragment>
         );
       })}
@@ -51,13 +56,10 @@ function PayOption({ id, icon, title, subtitle, selected, onSelect }) {
   );
 }
 
-function Panel({ stepNumber, title, children }) {
+function Panel({ title, children }) {
   return (
     <section style={{ background: '#fff', border: '1px solid var(--color-gray-100)', borderRadius: 'var(--radius-lg)', padding: 24, boxShadow: 'var(--shadow-sm)' }}>
-      <h2 style={{ fontSize: 'var(--text-lg)', color: 'var(--color-gray-900)', marginBottom: 18, display: 'flex', alignItems: 'center', gap: 10 }}>
-        <span style={{ width: 24, height: 24, borderRadius: 'var(--radius-full)', background: 'var(--color-gray-900)', color: '#fff', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 'var(--text-xs)', fontFamily: 'var(--font-display)' }}>{stepNumber}</span>
-        {title}
-      </h2>
+      <h2 style={{ fontSize: 'var(--text-lg)', color: 'var(--color-gray-900)', marginBottom: 18 }}>{title}</h2>
       {children}
     </section>
   );
@@ -72,17 +74,96 @@ function SumRow({ label, value, highlight }) {
   );
 }
 
+function formatAddress(a) {
+  if (!a) return '';
+  const linha1 = [a.address, a.number].filter(Boolean).join(', ');
+  const linha2 = [a.city, a.state].filter(Boolean).join(' — ');
+  return [linha1, [linha2, a.cep].filter(Boolean).join(' · ')].filter(Boolean).join('\n');
+}
+
 export default function Checkout() {
-  const { nav, cart, clearCart } = useStore();
+  const { nav, cart, clearCart, user } = useStore();
   const items = Object.values(cart || {});
+
+  const [step, setStep] = useState(0);
+  const [loadingAddr, setLoadingAddr] = useState(true);
+  const [savedAddress, setSavedAddress] = useState(null);
+  const [editing, setEditing] = useState(false);
+  const [form, setForm] = useState(EMPTY_ADDRESS);
+  const [addrErrors, setAddrErrors] = useState({});
+  const [savingAddr, setSavingAddr] = useState(false);
+
   const [paymentMethod, setPaymentMethod] = useState('card');
   const [orderConfirmed, setOrderConfirmed] = useState(false);
+
   const subtotal = items.reduce((total, item) => total + finalPrice(item.product) * item.qty, 0);
   const shippingCost = items.length ? (subtotal > 300 ? 0 : 29.9) : 0;
   const pixDiscount = paymentMethod === 'pix' ? +(subtotal * 0.05).toFixed(2) : 0;
   const orderTotal = subtotal + shippingCost - pixDiscount;
   const orderNumber = useMemo(() => 'TADS-' + Math.floor(100000 + Math.random() * 899999), []);
 
+  // Carrega o endereço do cadastro (Supabase). Se houver, mostra como resumo
+  // confirmável; se não, abre o formulário para o usuário cadastrar.
+  useEffect(() => {
+    let active = true;
+    if (!user) { setLoadingAddr(false); return undefined; }
+    (async () => {
+      try {
+        const { shipping, billing } = await getAddresses(user.id);
+        const addr = shipping ?? billing;
+        if (!active) return;
+        if (addr) { setSavedAddress(addr); setForm(addr); setEditing(false); }
+        else { setEditing(true); }
+      } catch (err) {
+        console.error('Falha ao carregar endereço:', err);
+        if (active) setEditing(true);
+      } finally {
+        if (active) setLoadingAddr(false);
+      }
+    })();
+    return () => { active = false; };
+  }, [user]);
+
+  const update = (field, value) => {
+    setForm((f) => ({ ...f, [field]: value }));
+    setAddrErrors((e) => ({ ...e, [field]: undefined }));
+  };
+
+  function validateAddress() {
+    const e = {};
+    if (!isNotEmpty(form.firstName)) e.firstName = 'Obrigatório';
+    if (!isNotEmpty(form.lastName)) e.lastName = 'Obrigatório';
+    if (!isNotEmpty(form.phone)) e.phone = 'Obrigatório';
+    if (!isNotEmpty(form.cep)) e.cep = 'Obrigatório';
+    if (!isNotEmpty(form.address)) e.address = 'Obrigatório';
+    if (!isNotEmpty(form.number)) e.number = 'Obrigatório';
+    if (!isNotEmpty(form.city)) e.city = 'Obrigatório';
+    if (!isNotEmpty(form.state)) e.state = 'Obrigatório';
+    return e;
+  }
+
+  async function handleContinueDelivery() {
+    if (editing) {
+      const e = validateAddress();
+      if (Object.keys(e).length > 0) { setAddrErrors(e); return; }
+      setSavingAddr(true);
+      try {
+        const saved = await saveAddress({ userId: user.id, type: 'shipping', data: form });
+        setSavedAddress(saved); setForm(saved); setEditing(false);
+        setStep(1); window.scrollTo(0, 0);
+      } catch (err) {
+        setAddrErrors({ submit: 'Não foi possível salvar o endereço. Tente novamente.' });
+      } finally {
+        setSavingAddr(false);
+      }
+    } else {
+      setStep(1); window.scrollTo(0, 0);
+    }
+  }
+
+  function goTo(n) { setStep(n); window.scrollTo(0, 0); }
+
+  // ── Pedido confirmado ──────────────────────────────────────
   if (orderConfirmed) {
     return (
       <div className="container" style={{ padding: '64px 0', maxWidth: 560, textAlign: 'center' }}>
@@ -109,6 +190,7 @@ export default function Checkout() {
     );
   }
 
+  // ── Carrinho vazio ─────────────────────────────────────────
   if (!items.length) {
     return (
       <div className="container" style={{ padding: '64px 0', textAlign: 'center' }}>
@@ -125,34 +207,84 @@ export default function Checkout() {
         <Icon.ChevronLeft size={16} /> Voltar ao carrinho
       </button>
       <h1 style={{ fontSize: 'var(--text-3xl)', color: 'var(--color-gray-900)', marginBottom: 20 }}>Finalizar compra</h1>
-      <Stepper step={1} />
+      <Stepper step={step} />
 
-      <form onSubmit={(e) => { e.preventDefault(); setOrderConfirmed(true); window.scrollTo(0, 0); }}>
-        <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) 360px', gap: 28, alignItems: 'start' }}>
-          {/* esquerda: formulários */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
-            <Panel stepNumber="1" title="Dados e entrega">
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-                <FieldRow cols="1fr 1fr">
-                  <Input label="Nome completo" placeholder="Seu nome" required />
-                  <Input label="E-mail" type="email" placeholder="seu@email.com" required />
-                </FieldRow>
-                <FieldRow cols="1fr 1fr">
-                  <Input label="CPF" placeholder="000.000.000-00" required />
-                  <Input label="Telefone" placeholder="(11) 90000-0000" required />
-                </FieldRow>
-                <FieldRow cols="1fr 2fr">
-                  <Input label="CEP" placeholder="00000-000" required />
-                  <Input label="Endereço" placeholder="Rua, número, complemento" required />
-                </FieldRow>
-                <FieldRow cols="2fr 1fr">
-                  <Input label="Cidade" placeholder="Cidade" required />
-                  <Input label="UF" placeholder="SP" required />
-                </FieldRow>
-              </div>
+      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) 360px', gap: 28, alignItems: 'start' }}>
+        {/* esquerda: etapa atual */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
+
+          {/* ── ETAPA 0: ENTREGA ── */}
+          {step === 0 && (
+            <Panel title="Endereço de entrega">
+              {loadingAddr ? (
+                <div style={{ display: 'flex', justifyContent: 'center', padding: 24 }}><Spinner size={32} /></div>
+              ) : editing ? (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                  {savedAddress && (
+                    <button type="button" onClick={() => { setForm(savedAddress); setEditing(false); setAddrErrors({}); }} style={{ alignSelf: 'flex-start', display: 'flex', alignItems: 'center', gap: 4, color: 'var(--color-accent)', background: 'none', border: 'none', cursor: 'pointer', fontSize: 'var(--text-sm)' }}>
+                      <Icon.ChevronLeft size={14} /> Usar endereço salvo
+                    </button>
+                  )}
+                  {addrErrors.submit && (
+                    <div role="alert" style={{ display: 'flex', alignItems: 'center', gap: 8, background: '#fee2e2', color: '#b91c1c', padding: '10px 14px', borderRadius: 'var(--radius-md)', fontSize: 'var(--text-sm)' }}>
+                      <Icon.AlertCircle size={18} /> <span>{addrErrors.submit}</span>
+                    </div>
+                  )}
+                  <FieldRow cols="1fr 1fr">
+                    <Input label="Nome" value={form.firstName} onChange={(e) => update('firstName', e.target.value)} error={addrErrors.firstName} required />
+                    <Input label="Sobrenome" value={form.lastName} onChange={(e) => update('lastName', e.target.value)} error={addrErrors.lastName} required />
+                  </FieldRow>
+                  <FieldRow cols="1fr 1fr">
+                    <Input label="E-mail" type="email" value={user?.email ?? ''} disabled helperText="Do seu cadastro" />
+                    <Input label="Telefone" value={form.phone} onChange={(e) => update('phone', e.target.value)} error={addrErrors.phone} placeholder="(11) 90000-0000" required />
+                  </FieldRow>
+                  <FieldRow cols="1fr 2fr">
+                    <Input label="CEP" value={form.cep} onChange={(e) => update('cep', e.target.value)} error={addrErrors.cep} placeholder="00000-000" required />
+                    <Input label="Endereço" value={form.address} onChange={(e) => update('address', e.target.value)} error={addrErrors.address} placeholder="Rua / Avenida" required />
+                  </FieldRow>
+                  <FieldRow cols="1fr 2fr 1fr">
+                    <Input label="Número" value={form.number} onChange={(e) => update('number', e.target.value)} error={addrErrors.number} required />
+                    <Input label="Cidade" value={form.city} onChange={(e) => update('city', e.target.value)} error={addrErrors.city} required />
+                    <Input label="UF" value={form.state} onChange={(e) => update('state', e.target.value)} error={addrErrors.state} placeholder="SP" required />
+                  </FieldRow>
+                </div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                  <p style={{ fontSize: 'var(--text-sm)', color: 'var(--color-gray-500)' }}>Confirme os dados de entrega do seu cadastro:</p>
+                  <FieldRow cols="1fr 1fr">
+                    <Input label="Nome" value={savedAddress.firstName} disabled />
+                    <Input label="Sobrenome" value={savedAddress.lastName} disabled />
+                  </FieldRow>
+                  <FieldRow cols="1fr 1fr">
+                    <Input label="E-mail" value={user?.email ?? ''} disabled />
+                    <Input label="Telefone" value={savedAddress.phone} disabled />
+                  </FieldRow>
+                  <FieldRow cols="1fr 2fr">
+                    <Input label="CEP" value={savedAddress.cep} disabled />
+                    <Input label="Endereço" value={`${savedAddress.address}, ${savedAddress.number}`} disabled />
+                  </FieldRow>
+                  <FieldRow cols="2fr 1fr">
+                    <Input label="Cidade" value={savedAddress.city} disabled />
+                    <Input label="UF" value={savedAddress.state} disabled />
+                  </FieldRow>
+                  <button type="button" onClick={() => { setForm(EMPTY_ADDRESS); setEditing(true); setAddrErrors({}); }} style={{ alignSelf: 'flex-start', display: 'flex', alignItems: 'center', gap: 6, color: 'var(--color-accent)', background: 'none', border: 'none', cursor: 'pointer', fontSize: 'var(--text-sm)', fontWeight: 'var(--font-semibold)' }}>
+                    <Icon.Plus size={16} /> Usar outro endereço
+                  </button>
+                </div>
+              )}
+              {!loadingAddr && (
+                <div style={{ marginTop: 20 }}>
+                  <Button variant="primary" size="lg" fullWidth disabled={savingAddr} onClick={handleContinueDelivery}>
+                    {savingAddr ? 'Salvando...' : 'Continuar para pagamento'} <Icon.ArrowRight size={18} />
+                  </Button>
+                </div>
+              )}
             </Panel>
+          )}
 
-            <Panel stepNumber="2" title="Forma de pagamento">
+          {/* ── ETAPA 1: PAGAMENTO ── */}
+          {step === 1 && (
+            <Panel title="Forma de pagamento">
               <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                 <PayOption id="card" icon={<Icon.CreditCard size={22} />} title="Cartão de crédito" subtitle="Em até 12x sem juros" selected={paymentMethod === 'card'} onSelect={setPaymentMethod} />
                 <PayOption id="pix" icon={<Icon.Zap size={22} />} title="Pix" subtitle="5% de desconto · aprovação imediata" selected={paymentMethod === 'pix'} onSelect={setPaymentMethod} />
@@ -176,48 +308,90 @@ export default function Checkout() {
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 16, fontSize: 'var(--text-xs)', color: 'var(--color-gray-500)' }}>
                 <Icon.Lock size={14} /> Pagamento processado com segurança via <strong style={{ color: 'var(--color-gray-700)' }}>Mercado Pago</strong>.
               </div>
-            </Panel>
-          </div>
-
-          {/* direita: resumo do pedido */}
-          <aside style={{ position: 'sticky', top: 24, display: 'flex', flexDirection: 'column', gap: 14 }}>
-            <div style={{ background: '#fff', border: '1px solid var(--color-gray-100)', borderRadius: 'var(--radius-lg)', padding: 22, boxShadow: 'var(--shadow-sm)' }}>
-              <h2 style={{ fontSize: 'var(--text-lg)', color: 'var(--color-gray-900)', marginBottom: 16 }}>Resumo do pedido</h2>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginBottom: 16, maxHeight: 220, overflowY: 'auto' }}>
-                {items.map(({ product, qty }) => (
-                  <div key={product.id} style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
-                    <div style={{ position: 'relative', flexShrink: 0 }}>
-                      <img src={product.thumbnail} alt="" style={{ width: 52, height: 52, objectFit: 'cover', borderRadius: 'var(--radius-md)' }} />
-                      <span style={{ position: 'absolute', top: -6, right: -6, minWidth: 18, height: 18, padding: '0 5px', borderRadius: 'var(--radius-full)', background: 'var(--color-primary-700)', color: '#fff', fontSize: '0.625rem', fontWeight: 'var(--font-bold)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{qty}</span>
-                    </div>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <p style={{ fontSize: 'var(--text-xs)', fontWeight: 'var(--font-semibold)', color: 'var(--color-gray-800)', lineHeight: 1.3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{product.title}</p>
-                      <span style={{ fontSize: 'var(--text-xs)', color: 'var(--color-gray-500)' }}>{fmtBRL(finalPrice(product))}</span>
-                    </div>
-                    <span style={{ fontFamily: 'var(--font-display)', fontSize: 'var(--text-sm)', fontWeight: 'var(--font-bold)', color: 'var(--color-gray-900)', whiteSpace: 'nowrap' }}>{fmtBRL(finalPrice(product) * qty)}</span>
-                  </div>
-                ))}
+              <div style={{ display: 'flex', gap: 12, marginTop: 20 }}>
+                <Button variant="ghost" size="lg" onClick={() => goTo(0)}><Icon.ChevronLeft size={18} /> Voltar</Button>
+                <Button variant="primary" size="lg" fullWidth onClick={() => goTo(2)}>Revisar pedido <Icon.ArrowRight size={18} /></Button>
               </div>
-              <div style={{ borderTop: '1px solid var(--color-gray-100)', paddingTop: 14, display: 'flex', flexDirection: 'column', gap: 6 }}>
-                <SumRow label="Subtotal" value={fmtBRL(subtotal)} />
-                <SumRow label="Frete" value={shippingCost === 0 ? 'Grátis' : fmtBRL(shippingCost)} highlight={shippingCost === 0} />
-                {pixDiscount > 0 && <SumRow label="Desconto Pix (5%)" value={'- ' + fmtBRL(pixDiscount)} highlight />}
-                <div style={{ borderTop: '1px solid var(--color-gray-200)', margin: '8px 0' }} />
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
-                  <span style={{ fontSize: 'var(--text-base)', fontWeight: 'var(--font-bold)', color: 'var(--color-gray-900)' }}>Total</span>
-                  <span style={{ fontFamily: 'var(--font-display)', fontSize: 'var(--text-2xl)', fontWeight: 'var(--font-extrabold)', color: 'var(--color-gray-900)' }}>{fmtBRL(orderTotal)}</span>
+            </Panel>
+          )}
+
+          {/* ── ETAPA 2: CONFIRMAÇÃO ── */}
+          {step === 2 && (
+            <Panel title="Revise e confirme">
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
+                <div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                    <h3 style={{ fontSize: 'var(--text-sm)', fontWeight: 'var(--font-bold)', color: 'var(--color-gray-700)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Entrega</h3>
+                    <button type="button" onClick={() => goTo(0)} style={{ color: 'var(--color-accent)', background: 'none', border: 'none', cursor: 'pointer', fontSize: 'var(--text-xs)', fontWeight: 'var(--font-bold)' }}>Editar</button>
+                  </div>
+                  <p style={{ fontSize: 'var(--text-sm)', color: 'var(--color-gray-800)' }}>{form.firstName} {form.lastName} · {form.phone}</p>
+                  <p style={{ fontSize: 'var(--text-sm)', color: 'var(--color-gray-600)', whiteSpace: 'pre-line' }}>{formatAddress(form)}</p>
+                </div>
+                <div style={{ borderTop: '1px solid var(--color-gray-100)' }} />
+                <div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                    <h3 style={{ fontSize: 'var(--text-sm)', fontWeight: 'var(--font-bold)', color: 'var(--color-gray-700)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Pagamento</h3>
+                    <button type="button" onClick={() => goTo(1)} style={{ color: 'var(--color-accent)', background: 'none', border: 'none', cursor: 'pointer', fontSize: 'var(--text-xs)', fontWeight: 'var(--font-bold)' }}>Editar</button>
+                  </div>
+                  <p style={{ fontSize: 'var(--text-sm)', color: 'var(--color-gray-800)' }}>{PAYMENT_LABELS[paymentMethod]}</p>
+                </div>
+                <div style={{ borderTop: '1px solid var(--color-gray-100)' }} />
+                <div>
+                  <h3 style={{ fontSize: 'var(--text-sm)', fontWeight: 'var(--font-bold)', color: 'var(--color-gray-700)', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 10 }}>Itens ({items.length})</h3>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                    {items.map(({ product, qty }) => (
+                      <div key={product.id} style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+                        <img src={product.thumbnail} alt="" style={{ width: 44, height: 44, objectFit: 'cover', borderRadius: 'var(--radius-md)', flexShrink: 0 }} />
+                        <span style={{ flex: 1, fontSize: 'var(--text-sm)', color: 'var(--color-gray-800)' }}>{product.title} <span style={{ color: 'var(--color-gray-400)' }}>× {qty}</span></span>
+                        <span style={{ fontFamily: 'var(--font-display)', fontWeight: 'var(--font-bold)', fontSize: 'var(--text-sm)' }}>{fmtBRL(finalPrice(product) * qty)}</span>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               </div>
-              <div style={{ marginTop: 18 }}>
-                <Button type="submit" variant="deal" size="lg" fullWidth><Icon.Lock size={18} /> Pagar com segurança</Button>
+              <div style={{ display: 'flex', gap: 12, marginTop: 22 }}>
+                <Button variant="ghost" size="lg" onClick={() => goTo(1)}><Icon.ChevronLeft size={18} /> Voltar</Button>
+                <Button variant="deal" size="lg" fullWidth onClick={() => { setOrderConfirmed(true); window.scrollTo(0, 0); }}><Icon.Lock size={18} /> Finalizar compra</Button>
+              </div>
+            </Panel>
+          )}
+        </div>
+
+        {/* direita: resumo do pedido (sempre visível) */}
+        <aside style={{ position: 'sticky', top: 24, display: 'flex', flexDirection: 'column', gap: 14 }}>
+          <div style={{ background: '#fff', border: '1px solid var(--color-gray-100)', borderRadius: 'var(--radius-lg)', padding: 22, boxShadow: 'var(--shadow-sm)' }}>
+            <h2 style={{ fontSize: 'var(--text-lg)', color: 'var(--color-gray-900)', marginBottom: 16 }}>Resumo do pedido</h2>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginBottom: 16, maxHeight: 220, overflowY: 'auto' }}>
+              {items.map(({ product, qty }) => (
+                <div key={product.id} style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+                  <div style={{ position: 'relative', flexShrink: 0 }}>
+                    <img src={product.thumbnail} alt="" style={{ width: 52, height: 52, objectFit: 'cover', borderRadius: 'var(--radius-md)' }} />
+                    <span style={{ position: 'absolute', top: -6, right: -6, minWidth: 18, height: 18, padding: '0 5px', borderRadius: 'var(--radius-full)', background: 'var(--color-primary-700)', color: '#fff', fontSize: '0.625rem', fontWeight: 'var(--font-bold)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{qty}</span>
+                  </div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <p style={{ fontSize: 'var(--text-xs)', fontWeight: 'var(--font-semibold)', color: 'var(--color-gray-800)', lineHeight: 1.3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{product.title}</p>
+                    <span style={{ fontSize: 'var(--text-xs)', color: 'var(--color-gray-500)' }}>{fmtBRL(finalPrice(product))}</span>
+                  </div>
+                  <span style={{ fontFamily: 'var(--font-display)', fontSize: 'var(--text-sm)', fontWeight: 'var(--font-bold)', color: 'var(--color-gray-900)', whiteSpace: 'nowrap' }}>{fmtBRL(finalPrice(product) * qty)}</span>
+                </div>
+              ))}
+            </div>
+            <div style={{ borderTop: '1px solid var(--color-gray-100)', paddingTop: 14, display: 'flex', flexDirection: 'column', gap: 6 }}>
+              <SumRow label="Subtotal" value={fmtBRL(subtotal)} />
+              <SumRow label="Frete" value={shippingCost === 0 ? 'Grátis' : fmtBRL(shippingCost)} highlight={shippingCost === 0} />
+              {pixDiscount > 0 && <SumRow label="Desconto Pix (5%)" value={'- ' + fmtBRL(pixDiscount)} highlight />}
+              <div style={{ borderTop: '1px solid var(--color-gray-200)', margin: '8px 0' }} />
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+                <span style={{ fontSize: 'var(--text-base)', fontWeight: 'var(--font-bold)', color: 'var(--color-gray-900)' }}>Total</span>
+                <span style={{ fontFamily: 'var(--font-display)', fontSize: 'var(--text-2xl)', fontWeight: 'var(--font-extrabold)', color: 'var(--color-gray-900)' }}>{fmtBRL(orderTotal)}</span>
               </div>
             </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 16px', background: 'var(--color-primary-50)', borderRadius: 'var(--radius-md)', color: 'var(--color-primary-800)', fontSize: 'var(--text-xs)' }}>
-              <Icon.Shield size={18} /> Compra 100% protegida. Seus dados são criptografados.
-            </div>
-          </aside>
-        </div>
-      </form>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 16px', background: 'var(--color-primary-50)', borderRadius: 'var(--radius-md)', color: 'var(--color-primary-800)', fontSize: 'var(--text-xs)' }}>
+            <Icon.Shield size={18} /> Compra 100% protegida. Seus dados são criptografados.
+          </div>
+        </aside>
+      </div>
     </div>
   );
 }
