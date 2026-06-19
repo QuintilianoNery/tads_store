@@ -5,6 +5,7 @@ import { createContext, useContext, useState, useEffect, useCallback, useMemo, u
 import { useNavigate } from 'react-router-dom';
 import { getAllProducts, getCategories } from '@/services/productService';
 import { signIn, signUp, signOut, onAuthStateChange } from '@/services/authService';
+import { getFavorites, addFavorite, removeFavorite } from '@/services/favoritesService';
 import { finalPrice } from '@/lib/format';
 
 const StoreContext = createContext(null);
@@ -120,6 +121,24 @@ export function StoreProvider({ children }) {
     return unsubscribe;
   }, []);
 
+  const userId = user?.id ?? null;
+
+  // Favoritos vinculados ao usuário: ao logar, descarta o estado anônimo e
+  // carrega a lista real do Supabase; ao deslogar, limpa os favoritos.
+  useEffect(() => {
+    let active = true;
+    if (!userId) { setWish({}); return undefined; }
+    (async () => {
+      try {
+        const ids = await getFavorites(userId);
+        if (active) setWish(Object.fromEntries(ids.map((id) => [id, true])));
+      } catch (err) {
+        console.error('Falha ao carregar favoritos do usuário:', err);
+      }
+    })();
+    return () => { active = false; };
+  }, [userId]);
+
   // nav('catalog', 'Eletrônicos') / nav('detail', 3) / nav('home')
   const nav = useCallback((name, id = null) => {
     const base = ROUTE_PATH[name] || '/';
@@ -159,9 +178,15 @@ export function StoreProvider({ children }) {
     });
   }, []);
 
+  // Alterna o favorito localmente e, se logado, sincroniza com o Supabase.
   const toggleWish = useCallback((id) => {
-    setWish((prevWish) => ({ ...prevWish, [id]: !prevWish[id] }));
-  }, []);
+    const willBeFavorited = !wish[id];
+    setWish((prevWish) => ({ ...prevWish, [id]: willBeFavorited }));
+    if (userId) {
+      const op = willBeFavorited ? addFavorite(userId, id) : removeFavorite(userId, id);
+      op.catch((err) => console.error('Falha ao sincronizar favorito:', err));
+    }
+  }, [wish, userId]);
 
   const clearCart = useCallback(() => setCart({}), []);
 
