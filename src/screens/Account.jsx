@@ -1,7 +1,8 @@
 // src/screens/Account.jsx — área logada: perfil, stats, pedidos, dados, endereços
 import { useState, useEffect } from 'react';
-import { Button, Input, Badge, Spinner } from '@/components/ds';
+import { Button, Input, Spinner } from '@/components/ds';
 import { Icon } from '@/components/Icon.jsx';
+import { AddressBook } from '@/components/AddressBook.jsx';
 import { useStore } from '@/context/StoreContext';
 import { changePassword } from '@/services/authService';
 import { getOrders, orderNumber } from '@/services/orderService';
@@ -253,18 +254,7 @@ export default function Account() {
           {activeTab === 'enderecos' && (
             <section style={{ background: '#fff', border: '1px solid var(--color-gray-100)', borderRadius: 'var(--radius-lg)', padding: 24, boxShadow: 'var(--shadow-sm)' }}>
               <h2 style={{ fontSize: 'var(--text-xl)', color: 'var(--color-gray-900)', marginBottom: 18 }}>Endereços</h2>
-              <div style={{ display: 'flex', alignItems: 'flex-start', gap: 14, padding: 18, border: '1.5px solid var(--color-primary-200)', borderRadius: 'var(--radius-md)', background: 'var(--color-primary-50)' }}>
-                <Icon.MapPin size={22} style={{ color: 'var(--color-primary-700)', flexShrink: 0 }} />
-                <div style={{ flex: 1 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <strong style={{ color: 'var(--color-gray-900)' }}>Casa</strong>
-                    <Badge variant="primary" size="sm">Principal</Badge>
-                  </div>
-                  <p style={{ fontSize: 'var(--text-sm)', color: 'var(--color-gray-600)', marginTop: 4 }}>Rua das Palmeiras, 1280 — Apto 52<br />Pinheiros, São Paulo — SP · 05422-000</p>
-                </div>
-                <button style={{ fontSize: 'var(--text-sm)', fontWeight: 'var(--font-bold)', color: 'var(--color-accent)', background: 'none', border: 'none', cursor: 'pointer' }}>Editar</button>
-              </div>
-              <div style={{ marginTop: 16 }}><Button variant="secondary"><Icon.Plus size={16} /> Adicionar endereço</Button></div>
+              <AddressBook userId={user?.id} />
             </section>
           )}
         </div>
