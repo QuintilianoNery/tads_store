@@ -1,13 +1,13 @@
 // src/screens/Checkout.jsx — checkout em etapas: Entrega → Pagamento → Confirmação.
-// Rota protegida: o usuário está sempre logado. O endereço de entrega vem do
-// cadastro (Supabase) e pode ser confirmado (campos desabilitados) ou trocado.
-import React, { useState, useEffect } from 'react';
-import { Button, Input, Spinner } from '@/components/ds';
+// Rota protegida: o usuário está sempre logado. O endereço de entrega é
+// escolhido na agenda de endereços (AddressBook), que permite selecionar,
+// editar ou adicionar endereços vinculados ao cadastro.
+import React, { useState } from 'react';
+import { Button, Input } from '@/components/ds';
 import { Icon } from '@/components/Icon.jsx';
+import { AddressBook } from '@/components/AddressBook.jsx';
 import { useStore } from '@/context/StoreContext';
-import { getAddresses, saveAddress, EMPTY_ADDRESS } from '@/services/addressService';
 import { orderNumber } from '@/services/orderService';
-import { isNotEmpty } from '@/utils/validators';
 import { fmtBRL, finalPrice } from '@/lib/format';
 
 const STEPS = ['Entrega', 'Pagamento', 'Confirmação'];
@@ -87,12 +87,8 @@ export default function Checkout() {
   const items = Object.values(cart || {});
 
   const [step, setStep] = useState(0);
-  const [loadingAddr, setLoadingAddr] = useState(true);
-  const [savedAddress, setSavedAddress] = useState(null);
-  const [editing, setEditing] = useState(false);
-  const [form, setForm] = useState(EMPTY_ADDRESS);
-  const [addrErrors, setAddrErrors] = useState({});
-  const [savingAddr, setSavingAddr] = useState(false);
+  const [selectedAddress, setSelectedAddress] = useState(null);
+  const [deliveryError, setDeliveryError] = useState('');
 
   const [paymentMethod, setPaymentMethod] = useState('card');
   const [placingOrder, setPlacingOrder] = useState(false);
@@ -106,63 +102,11 @@ export default function Checkout() {
   const pixDiscount = paymentMethod === 'pix' ? +(subtotal * 0.05).toFixed(2) : 0;
   const orderTotal = subtotal + shippingCost - pixDiscount;
 
-  // Carrega o endereço do cadastro (Supabase). Se houver, mostra como resumo
-  // confirmável; se não, abre o formulário para o usuário cadastrar.
-  useEffect(() => {
-    let active = true;
-    if (!user) { setLoadingAddr(false); return undefined; }
-    (async () => {
-      try {
-        const { shipping, billing } = await getAddresses(user.id);
-        const addr = shipping ?? billing;
-        if (!active) return;
-        if (addr) { setSavedAddress(addr); setForm(addr); setEditing(false); }
-        else { setEditing(true); }
-      } catch (err) {
-        console.error('Falha ao carregar endereço:', err);
-        if (active) setEditing(true);
-      } finally {
-        if (active) setLoadingAddr(false);
-      }
-    })();
-    return () => { active = false; };
-  }, [user]);
-
-  const update = (field, value) => {
-    setForm((f) => ({ ...f, [field]: value }));
-    setAddrErrors((e) => ({ ...e, [field]: undefined }));
-  };
-
-  function validateAddress() {
-    const e = {};
-    if (!isNotEmpty(form.firstName)) e.firstName = 'Obrigatório';
-    if (!isNotEmpty(form.lastName)) e.lastName = 'Obrigatório';
-    if (!isNotEmpty(form.phone)) e.phone = 'Obrigatório';
-    if (!isNotEmpty(form.cep)) e.cep = 'Obrigatório';
-    if (!isNotEmpty(form.address)) e.address = 'Obrigatório';
-    if (!isNotEmpty(form.number)) e.number = 'Obrigatório';
-    if (!isNotEmpty(form.city)) e.city = 'Obrigatório';
-    if (!isNotEmpty(form.state)) e.state = 'Obrigatório';
-    return e;
-  }
-
-  async function handleContinueDelivery() {
-    if (editing) {
-      const e = validateAddress();
-      if (Object.keys(e).length > 0) { setAddrErrors(e); return; }
-      setSavingAddr(true);
-      try {
-        const saved = await saveAddress({ userId: user.id, type: 'shipping', data: form });
-        setSavedAddress(saved); setForm(saved); setEditing(false);
-        setStep(1); window.scrollTo(0, 0);
-      } catch (err) {
-        setAddrErrors({ submit: 'Não foi possível salvar o endereço. Tente novamente.' });
-      } finally {
-        setSavingAddr(false);
-      }
-    } else {
-      setStep(1); window.scrollTo(0, 0);
-    }
+  // Avança para o pagamento exigindo um endereço de entrega selecionado.
+  function handleContinueDelivery() {
+    if (!selectedAddress) { setDeliveryError('Selecione ou cadastre um endereço de entrega.'); return; }
+    setDeliveryError('');
+    setStep(1); window.scrollTo(0, 0);
   }
 
   function goTo(n) { setStep(n); window.scrollTo(0, 0); }
@@ -172,7 +116,7 @@ export default function Checkout() {
     setFinalizeError('');
     setPlacingOrder(true);
     try {
-      const order = await placeOrder({ subtotal, total: orderTotal, paymentMethod, address: form });
+      const order = await placeOrder({ subtotal, total: orderTotal, paymentMethod, address: selectedAddress });
       setConfirmedOrder(order);
       window.scrollTo(0, 0);
     } catch (err) {
@@ -239,69 +183,25 @@ export default function Checkout() {
           {/* ── ETAPA 0: ENTREGA ── */}
           {step === 0 && (
             <Panel title="Endereço de entrega">
-              {loadingAddr ? (
-                <div style={{ display: 'flex', justifyContent: 'center', padding: 24 }}><Spinner size={32} /></div>
-              ) : editing ? (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-                  {savedAddress && (
-                    <button type="button" onClick={() => { setForm(savedAddress); setEditing(false); setAddrErrors({}); }} style={{ alignSelf: 'flex-start', display: 'flex', alignItems: 'center', gap: 4, color: 'var(--color-accent)', background: 'none', border: 'none', cursor: 'pointer', fontSize: 'var(--text-sm)' }}>
-                      <Icon.ChevronLeft size={14} /> Usar endereço salvo
-                    </button>
-                  )}
-                  {addrErrors.submit && (
-                    <div role="alert" style={{ display: 'flex', alignItems: 'center', gap: 8, background: '#fee2e2', color: '#b91c1c', padding: '10px 14px', borderRadius: 'var(--radius-md)', fontSize: 'var(--text-sm)' }}>
-                      <Icon.AlertCircle size={18} /> <span>{addrErrors.submit}</span>
-                    </div>
-                  )}
-                  <FieldRow cols="1fr 1fr">
-                    <Input label="Nome" value={form.firstName} onChange={(e) => update('firstName', e.target.value)} error={addrErrors.firstName} required />
-                    <Input label="Sobrenome" value={form.lastName} onChange={(e) => update('lastName', e.target.value)} error={addrErrors.lastName} required />
-                  </FieldRow>
-                  <FieldRow cols="1fr 1fr">
-                    <Input label="E-mail" type="email" value={user?.email ?? ''} disabled helperText="Do seu cadastro" />
-                    <Input label="Telefone" value={form.phone} onChange={(e) => update('phone', e.target.value)} error={addrErrors.phone} placeholder="(11) 90000-0000" required />
-                  </FieldRow>
-                  <FieldRow cols="1fr 2fr">
-                    <Input label="CEP" value={form.cep} onChange={(e) => update('cep', e.target.value)} error={addrErrors.cep} placeholder="00000-000" required />
-                    <Input label="Endereço" value={form.address} onChange={(e) => update('address', e.target.value)} error={addrErrors.address} placeholder="Rua / Avenida" required />
-                  </FieldRow>
-                  <FieldRow cols="1fr 2fr 1fr">
-                    <Input label="Número" value={form.number} onChange={(e) => update('number', e.target.value)} error={addrErrors.number} required />
-                    <Input label="Cidade" value={form.city} onChange={(e) => update('city', e.target.value)} error={addrErrors.city} required />
-                    <Input label="UF" value={form.state} onChange={(e) => update('state', e.target.value)} error={addrErrors.state} placeholder="SP" required />
-                  </FieldRow>
-                </div>
-              ) : (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-                  <p style={{ fontSize: 'var(--text-sm)', color: 'var(--color-gray-500)' }}>Confirme os dados de entrega do seu cadastro:</p>
-                  <FieldRow cols="1fr 1fr">
-                    <Input label="Nome" value={savedAddress.firstName} disabled />
-                    <Input label="Sobrenome" value={savedAddress.lastName} disabled />
-                  </FieldRow>
-                  <FieldRow cols="1fr 1fr">
-                    <Input label="E-mail" value={user?.email ?? ''} disabled />
-                    <Input label="Telefone" value={savedAddress.phone} disabled />
-                  </FieldRow>
-                  <FieldRow cols="1fr 2fr">
-                    <Input label="CEP" value={savedAddress.cep} disabled />
-                    <Input label="Endereço" value={`${savedAddress.address}, ${savedAddress.number}`} disabled />
-                  </FieldRow>
-                  <FieldRow cols="2fr 1fr">
-                    <Input label="Cidade" value={savedAddress.city} disabled />
-                    <Input label="UF" value={savedAddress.state} disabled />
-                  </FieldRow>
-                  <button type="button" onClick={() => { setForm(EMPTY_ADDRESS); setEditing(true); setAddrErrors({}); }} style={{ alignSelf: 'flex-start', display: 'flex', alignItems: 'center', gap: 6, color: 'var(--color-accent)', background: 'none', border: 'none', cursor: 'pointer', fontSize: 'var(--text-sm)', fontWeight: 'var(--font-semibold)' }}>
-                    <Icon.Plus size={16} /> Usar outro endereço
-                  </button>
+              <p style={{ fontSize: 'var(--text-sm)', color: 'var(--color-gray-500)', marginBottom: 16 }}>
+                Selecione o endereço para a entrega ou cadastre um novo.
+              </p>
+              <AddressBook
+                userId={user?.id}
+                selectable
+                selectedId={selectedAddress?.id ?? null}
+                onSelect={(addr) => { setSelectedAddress(addr); if (addr) setDeliveryError(''); }}
+              />
+              {deliveryError && (
+                <div role="alert" aria-live="assertive" style={{ display: 'flex', alignItems: 'center', gap: 8, background: '#fee2e2', color: '#b91c1c', padding: '10px 14px', borderRadius: 'var(--radius-md)', fontSize: 'var(--text-sm)', marginTop: 16 }}>
+                  <Icon.AlertCircle size={18} /> <span>{deliveryError}</span>
                 </div>
               )}
-              {!loadingAddr && (
-                <div style={{ marginTop: 20 }}>
-                  <Button variant="primary" size="lg" fullWidth disabled={savingAddr} onClick={handleContinueDelivery}>
-                    {savingAddr ? 'Salvando...' : 'Continuar para pagamento'} <Icon.ArrowRight size={18} />
-                  </Button>
-                </div>
-              )}
+              <div style={{ marginTop: 20 }}>
+                <Button variant="primary" size="lg" fullWidth disabled={!selectedAddress} onClick={handleContinueDelivery}>
+                  Continuar para pagamento <Icon.ArrowRight size={18} />
+                </Button>
+              </div>
             </Panel>
           )}
 
@@ -347,8 +247,8 @@ export default function Checkout() {
                     <h3 style={{ fontSize: 'var(--text-sm)', fontWeight: 'var(--font-bold)', color: 'var(--color-gray-700)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Entrega</h3>
                     <button type="button" onClick={() => goTo(0)} style={{ color: 'var(--color-accent)', background: 'none', border: 'none', cursor: 'pointer', fontSize: 'var(--text-xs)', fontWeight: 'var(--font-bold)' }}>Editar</button>
                   </div>
-                  <p style={{ fontSize: 'var(--text-sm)', color: 'var(--color-gray-800)' }}>{form.firstName} {form.lastName} · {form.phone}</p>
-                  <p style={{ fontSize: 'var(--text-sm)', color: 'var(--color-gray-600)', whiteSpace: 'pre-line' }}>{formatAddress(form)}</p>
+                  <p style={{ fontSize: 'var(--text-sm)', color: 'var(--color-gray-800)' }}>{selectedAddress?.firstName} {selectedAddress?.lastName} · {selectedAddress?.phone}</p>
+                  <p style={{ fontSize: 'var(--text-sm)', color: 'var(--color-gray-600)', whiteSpace: 'pre-line' }}>{formatAddress(selectedAddress)}</p>
                 </div>
                 <div style={{ borderTop: '1px solid var(--color-gray-100)' }} />
                 <div>
