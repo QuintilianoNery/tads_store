@@ -14,9 +14,14 @@ import viteConfig from './vite.config.js';
 
 const dir = dirname(fileURLToPath(import.meta.url));
 
-export default mergeConfig(
-  viteConfig,
-  defineConfig({
+// vite.config.js exporta um callback async (resolve a versão do rodapé em
+// tempo de build). O mergeConfig não aceita config em forma de callback, então
+// resolvemos para um objeto antes de mesclar.
+export default defineConfig(async (configEnv) => {
+  const resolvedViteConfig =
+    typeof viteConfig === 'function' ? await viteConfig(configEnv) : viteConfig;
+
+  return mergeConfig(resolvedViteConfig, {
     test: {
       projects: [
         {
@@ -42,5 +47,5 @@ export default mergeConfig(
         },
       ],
     },
-  })
-);
+  });
+});
