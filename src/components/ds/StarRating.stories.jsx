@@ -1,4 +1,5 @@
-import { expect, within } from 'storybook/test';
+import { useState } from 'react';
+import { expect, userEvent, within } from 'storybook/test';
 import { StarRating } from './StarRating.jsx';
 
 const meta = {
@@ -34,4 +35,25 @@ export const Scale = {
       ))}
     </div>
   ),
+};
+
+// Seletor interativo (avaliação pós-compra): clicar numa estrela define a nota.
+export const Selecionavel = {
+  render: () => {
+    const [rating, setRating] = useState(0);
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+        <StarRating rating={rating} size={28} onRate={setRating} />
+        <span style={{ fontSize: 'var(--text-sm)', color: 'var(--color-gray-500)' }}>
+          Nota selecionada: {rating}
+        </span>
+      </div>
+    );
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(canvas.getByText('Nota selecionada: 0')).toBeInTheDocument();
+    await userEvent.click(canvas.getByRole('radio', { name: '4 estrelas' }));
+    await expect(canvas.getByText('Nota selecionada: 4')).toBeInTheDocument();
+  },
 };

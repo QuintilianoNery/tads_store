@@ -142,3 +142,9 @@ fetch('https://dummyjson.com/products/1', {
 .then(console.log);
 
 Veja se tem como atualizar o estoque do produto comprado, para que o estoque fique sempre atualizado, e os usuários possam ver a disponibilidade real dos produtos ao navegar pelo catálogo. Isso pode ser feito fazendo uma requisição à API DummyJSON para atualizar o estoque dos produtos comprados, garantindo que as informações de estoque estejam sempre precisas e atualizadas para os usuários.
+
+## 18 - Implementar Visualizar pedidos realizados, na lista de meis pedidos 
+- Na seção "Meus Pedidos", os usuários devem ter a opção de visualizar os detalhes de cada pedido realizado, incluindo os produtos comprados, o status do pedido, a data da compra e as informações de entrega. Isso pode ser implementado como uma página de detalhes do pedido, acessível a partir da lista de pedidos do usuário.
+
+# 19 - implementar e salvar no cadastro do banco de dados do usuário
+- no lugar dentro do cadastro da minha conta, mostra o nome do usuário e Cliente desde 2024, deve pegar o ano real de quando ele se cadastrou.  

@@ -1,11 +1,13 @@
 // src/screens/Account.jsx — área logada: perfil, stats, pedidos, dados, endereços
 import { useState, useEffect } from 'react';
-import { Button, Input, Spinner } from '@/components/ds';
+import { Button, Input, Spinner, StarRating } from '@/components/ds';
 import { Icon } from '@/components/Icon.jsx';
 import { AddressBook } from '@/components/AddressBook.jsx';
+import { ReviewForm } from '@/components/ReviewForm.jsx';
 import { useStore } from '@/context/StoreContext';
 import { changePassword } from '@/services/authService';
 import { getOrders, orderNumber } from '@/services/orderService';
+import { getUserReviews, upsertReview } from '@/services/reviewService';
 import { isNotEmpty, isValidPassword, MIN_PASSWORD_LENGTH } from '@/utils/validators';
 import { maskCpfCnpj, maskPhone, maskEmail } from '@/utils/masks';
 import { fmtBRL } from '@/lib/format';
@@ -46,24 +48,49 @@ export default function Account() {
   const [profile, setProfile] = useState({ name, email: user?.email ?? '', cpf: '', phone: '' });
   const updateProfile = (field, value) => setProfile((p) => ({ ...p, [field]: value }));
 
-  // ── Histórico de pedidos (Supabase) ────────────────────────
+  // ── Histórico de pedidos + avaliações do usuário (Supabase) ─
   const [orders, setOrders] = useState([]);
   const [loadingOrders, setLoadingOrders] = useState(true);
+  const [reviewsByProduct, setReviewsByProduct] = useState({}); // { [productId]: review }
+  const [reviewingKey, setReviewingKey] = useState(null);        // `${orderId}:${productId}` em edição
   useEffect(() => {
     let active = true;
     if (!user) { setLoadingOrders(false); return undefined; }
     (async () => {
+      // Pedidos: carregam de forma independente.
       try {
-        const data = await getOrders(user.id);
-        if (active) setOrders(data);
+        const orderData = await getOrders(user.id);
+        if (active) setOrders(orderData);
       } catch (err) {
         console.error('Falha ao carregar pedidos:', err);
       } finally {
         if (active) setLoadingOrders(false);
       }
+      // Avaliações: opcionais — uma falha aqui (ex.: tabela ainda não criada)
+      // não pode impedir a exibição dos pedidos.
+      try {
+        const reviewData = await getUserReviews(user.id);
+        if (active) setReviewsByProduct(Object.fromEntries((reviewData ?? []).map((r) => [r.product_id, r])));
+      } catch (err) {
+        console.error('Falha ao carregar avaliações:', err);
+      }
     })();
     return () => { active = false; };
   }, [user]);
+
+  // Envia/atualiza a avaliação de um produto comprado e reflete na lista local.
+  async function submitReview(orderId, item, { rating, comment }) {
+    const saved = await upsertReview({
+      userId: user.id,
+      productId: item.product_id,
+      orderId,
+      rating,
+      comment,
+      authorName: user?.name || 'Cliente',
+    });
+    setReviewsByProduct((prev) => ({ ...prev, [item.product_id]: saved }));
+    setReviewingKey(null);
+  }
 
   // ── Troca de senha ─────────────────────────────────────────
   const [pwdForm, setPwdForm] = useState({ current: '', next: '', confirm: '' });
@@ -180,15 +207,58 @@ export default function Account() {
                     const itemList = order.order_items ?? [];
                     const units = itemList.reduce((sum, it) => sum + (it.quantity ?? 0), 0);
                     const statusStyle = ORDER_STATUS[order.status] ?? ORDER_STATUS.pendente;
+                    // Só pedidos pagos podem ser avaliados.
+                    const canReview = order.status === 'pago';
                     return (
-                      <div key={order.id} style={{ display: 'flex', alignItems: 'center', gap: 16, padding: 16, border: '1px solid var(--color-gray-100)', borderRadius: 'var(--radius-md)', flexWrap: 'wrap' }}>
-                        <span style={{ width: 44, height: 44, borderRadius: 'var(--radius-md)', background: 'var(--color-primary-50)', color: 'var(--color-primary-700)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}><Icon.Truck size={20} /></span>
-                        <div style={{ flex: 1, minWidth: 140 }}>
-                          <div style={{ fontFamily: 'var(--font-display)', fontWeight: 'var(--font-bold)', color: 'var(--color-gray-900)', fontSize: 'var(--text-sm)' }}>{orderNumber(order)}</div>
-                          <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-gray-500)' }}>{formatOrderDate(order.created_at)} · {units} {units > 1 ? 'itens' : 'item'}</div>
+                      <div key={order.id} style={{ border: '1px solid var(--color-gray-100)', borderRadius: 'var(--radius-md)', overflow: 'hidden' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 16, padding: 16, flexWrap: 'wrap' }}>
+                          <span style={{ width: 44, height: 44, borderRadius: 'var(--radius-md)', background: 'var(--color-primary-50)', color: 'var(--color-primary-700)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}><Icon.Truck size={20} /></span>
+                          <div style={{ flex: 1, minWidth: 140 }}>
+                            <div style={{ fontFamily: 'var(--font-display)', fontWeight: 'var(--font-bold)', color: 'var(--color-gray-900)', fontSize: 'var(--text-sm)' }}>{orderNumber(order)}</div>
+                            <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-gray-500)' }}>{formatOrderDate(order.created_at)} · {units} {units > 1 ? 'itens' : 'item'}</div>
+                          </div>
+                          <span style={{ fontSize: '0.6875rem', fontWeight: 'var(--font-bold)', textTransform: 'uppercase', letterSpacing: '0.04em', padding: '4px 10px', borderRadius: 'var(--radius-full)', background: statusStyle.bg, color: statusStyle.fg, whiteSpace: 'nowrap' }}>{statusStyle.label}</span>
+                          <span style={{ fontFamily: 'var(--font-display)', fontWeight: 'var(--font-bold)', color: 'var(--color-gray-900)', whiteSpace: 'nowrap' }}>{fmtBRL(order.total)}</span>
                         </div>
-                        <span style={{ fontSize: '0.6875rem', fontWeight: 'var(--font-bold)', textTransform: 'uppercase', letterSpacing: '0.04em', padding: '4px 10px', borderRadius: 'var(--radius-full)', background: statusStyle.bg, color: statusStyle.fg, whiteSpace: 'nowrap' }}>{statusStyle.label}</span>
-                        <span style={{ fontFamily: 'var(--font-display)', fontWeight: 'var(--font-bold)', color: 'var(--color-gray-900)', whiteSpace: 'nowrap' }}>{fmtBRL(order.total)}</span>
+
+                        {/* Itens do pedido com avaliação pós-compra */}
+                        <div style={{ borderTop: '1px solid var(--color-gray-100)', background: 'var(--color-gray-50)' }}>
+                          {itemList.map((item) => {
+                            const review = reviewsByProduct[item.product_id];
+                            const key = `${order.id}:${item.product_id}`;
+                            const isEditing = reviewingKey === key;
+                            return (
+                              <div key={item.id} style={{ padding: '12px 16px', borderBottom: '1px solid var(--color-gray-100)' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+                                  {item.product_thumbnail && (
+                                    <img src={item.product_thumbnail} alt="" style={{ width: 40, height: 40, borderRadius: 'var(--radius-sm)', objectFit: 'cover', background: '#fff', flexShrink: 0 }} />
+                                  )}
+                                  <div style={{ flex: 1, minWidth: 160 }}>
+                                    <div style={{ fontSize: 'var(--text-sm)', color: 'var(--color-gray-800)' }}>{item.product_title}</div>
+                                    {review && (
+                                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 4 }}>
+                                        <StarRating rating={review.rating} size={13} />
+                                        <span style={{ fontSize: '0.6875rem', fontWeight: 'var(--font-bold)', textTransform: 'uppercase', letterSpacing: '0.04em', color: 'var(--color-gray-400)' }}>Sua avaliação</span>
+                                      </div>
+                                    )}
+                                  </div>
+                                  {canReview && !isEditing && (
+                                    <Button variant={review ? 'ghost' : 'secondary'} size="sm" onClick={() => setReviewingKey(key)}>
+                                      {review ? 'Editar avaliação' : 'Avaliar'}
+                                    </Button>
+                                  )}
+                                </div>
+                                {isEditing && (
+                                  <ReviewForm
+                                    initial={review}
+                                    onSubmit={(payload) => submitReview(order.id, item, payload)}
+                                    onCancel={() => setReviewingKey(null)}
+                                  />
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
                       </div>
                     );
                   })}

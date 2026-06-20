@@ -38,7 +38,7 @@ real com **Supabase** (auth + dados) e catálogo da **API DummyJSON**.
   conta e no checkout (modo `selectable`).
 - `src/services/` — acesso a dados: `supabase.js` (cliente), `authService`,
   `productService` (DummyJSON), `favoritesService`, `cartService`,
-  `addressService`, `orderService`.
+  `addressService`, `orderService`, `reviewService` (avaliações).
 - `src/lib/` — puros: `format.js` (`fmtBRL`, `finalPrice`), `orderNumber.js`.
 - `src/utils/` — `validators.js`, `masks.js` (CPF/CNPJ, telefone, CEP, e-mail).
 
@@ -52,11 +52,16 @@ account, help`. Chave inexistente cai em `/` (home) — atenção a typos.
 
 - Cliente em `src/services/supabase.js` (lança erro sem env vars).
 - Tabelas (migrations em `supabase/migrations/`): `profiles`, `addresses`,
-  `orders`, `order_items`, `favorites`, `cart_items`. Todas com **RLS**
-  (cada usuário só acessa o próprio dado).
+  `orders`, `order_items`, `favorites`, `cart_items`, `reviews`. Todas com **RLS**
+  (cada usuário só acessa o próprio dado). `reviews` é **sem moderação**: leitura
+  pública de todas; cada usuário cria/edita só a própria (uma por produto). A
+  coluna `status` existe mas não é usada para gating (ver migration
+  `20260620010000_reviews_sem_moderacao.sql`).
 - Env (`.env`, ver `.env.example`): `VITE_SUPABASE_URL`,
   `VITE_SUPABASE_ANON_KEY`. Opcional: `VITE_API_BASE_URL` (default DummyJSON).
-- Migrations rodam manualmente no SQL Editor do Supabase.
+- Migrations rodam manualmente no SQL Editor do Supabase, caso o terminal tenha acesso, deve sempre perguntar ao usuário se deseja executá-las, se possível o terminal deve fazer um backup automático do banco antes de rodar as migrations, para evitar perda de dados acidental.
+- Aplicar sem backup (recomentado) Roda supabase db push'. 
+  - A migration é aditiva (só cria a tabela reviews + RLS), não toca em dados existentes risco de perda praticamente nulo.
 
 ## Comandos
 
@@ -88,5 +93,8 @@ account, help`. Chave inexistente cai em `/` (home) — atenção a typos.
    código órfão; remova o que ficar sem uso após a mudança.
 2. **Atualizar os testes ao final**: toda mudança de comportamento deve ter
    teste em `tests/unit/` (lógica/serviço) e rodar `npx vitest run --project unit`.
-3. **Atualizar o Storybook quando necessário**: se um componente do DS mudar
+   Os testes devem ser executados ao final, antes do commit, para garantir que nada quebrou.
+3. **Atualizar o  quando necessStorybookário**: se um componente do DS mudar
    de API ou ganhar estado novo, atualize/crie a `.stories.jsx` (com `play`).
+   O Storybook deve ser consultado para validar visualmente as mudanças e garantir que os componentes que forem incluidos na tela.}
+   Somente somente se forem criados novos componentes ou mudanças visuais significativas. Se for só lógica, não precisa mexer no Storybook.
