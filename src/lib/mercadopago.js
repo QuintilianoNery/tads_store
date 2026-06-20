@@ -4,120 +4,114 @@
 // ------------------------------------------------------------
 // ⚠️  O Access Token do Mercado Pago é um SEGREDO e NUNCA pode
 //     ficar no frontend (qualquer pessoa veria no navegador).
-//     Por isso a criação da "preference" (pedido a pagar) é
-//     feita no servidor, dentro de uma Supabase Edge Function
-//     chamada `create-preference`, que guarda o token com segurança.
+//     Por isso a criação da "preference" (pedido a pagar) é feita
+//     no servidor, na função serverless `api/create-preference.js`
+//     (Vercel/Node), que guarda o token com segurança.
 //
 //     Este arquivo apenas:
-//       1. Monta o payload do pedido a partir do carrinho
-//       2. Chama a Edge Function
+//       1. Mapeia os itens do carrinho ({ product, qty }) para o
+//          formato do Mercado Pago;
+//       2. Chama a função `/api/create-preference` (mesma origem);
 //       3. Devolve a URL `init_point` para redirecionar o usuário
-//          ao Checkout Pro hospedado pelo Mercado Pago
+//          ao Checkout Pro (fluxo de redirect).
 //
-//     Documentação de deploy da Edge Function:
-//       docs/progresso/004_edge_function_create_preference.md
+//     Backend: api/create-preference.js · docs/progresso/004.
 // ============================================================
+import { finalPrice } from '@/lib/format';
 
-const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL
-const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY
-const MP_PUBLIC_KEY = import.meta.env.VITE_MP_PUBLIC_KEY
-
-/** A chave pública pode ser exposta no frontend (usada por Bricks/SDK JS). */
-export const mercadoPagoPublicKey = MP_PUBLIC_KEY
-
-/** URL da Edge Function responsável por criar a preference. */
-const CREATE_PREFERENCE_URL = SUPABASE_URL
-  ? `${SUPABASE_URL}/functions/v1/create-preference`
-  : null
+/** Endpoint da função serverless (mesma origem — Vercel serve /api). */
+const CREATE_PREFERENCE_URL = '/api/create-preference';
 
 /**
- * Converte os itens do carrinho no formato esperado pelo Mercado Pago.
- * @param {Array} items itens do cartStore
+ * Converte os itens do carrinho ({ product, qty }) no formato do Mercado Pago.
+ * Usa o preço final (com desconto) como unit_price, em BRL (reais, não centavos).
  */
 function mapItemsToMercadoPago(items) {
-  return items.map((item) => ({
-    id: String(item.id),
-    title: item.title,
-    description: [item.selectedSize, item.selectedColor]
-      .filter(Boolean)
-      .join(' / ') || item.category || undefined,
-    picture_url: item.thumbnail,
-    category_id: item.category,
-    quantity: Number(item.quantity),
-    unit_price: Number(item.price),
+  return items.map(({ product, qty }) => ({
+    id: String(product.id),
+    title: product.title,
+    description: product.category || undefined,
+    picture_url: product.thumbnail,
+    category_id: product.category,
+    quantity: Number(qty),
+    unit_price: finalPrice(product),
     currency_id: 'BRL',
-  }))
+  }));
 }
 
 /**
- * Cria uma preference de pagamento no Mercado Pago via Edge Function
- * e retorna a URL de checkout (`init_point`).
+ * Monta as URLs de retorno do Checkout Pro.
+ * O Mercado Pago RECUSA back_urls em domínios locais (localhost/127.0.0.1) —
+ * causaria "Algo deu errado" na volta. Então em dev local devolvemos undefined
+ * (o retorno automático só é testável no deploy https da Vercel).
+ * As três URLs apontam para a MESMA página; o `status` real vem na query que o
+ * Mercado Pago anexa na volta (não o chumbamos aqui).
+ */
+function buildBackUrls() {
+  const { origin, hostname } = window.location;
+  const isLocal = hostname === 'localhost' || hostname === '127.0.0.1';
+  if (isLocal) return undefined;
+  const returnUrl = `${origin}/pedido-recebido`;
+  return { success: returnUrl, failure: returnUrl, pending: returnUrl };
+}
+
+/**
+ * Cria uma preference de pagamento no Mercado Pago (via função serverless)
+ * e retorna a URL de checkout (`init_point`) para redirecionar o comprador.
  *
  * @param {Object} params
- * @param {Array}  params.items     Itens do carrinho
- * @param {Object} params.payer     Dados do comprador { name, surname, email, phone }
- * @param {string} params.externalReference  ID/numero do pedido para conciliação
- * @returns {Promise<{ initPoint: string, preferenceId: string }>}
+ * @param {Array}  params.items              Itens do carrinho [{ product, qty }]
+ * @param {Object} [params.payer]            Dados do comprador { name, surname, email }
+ * @param {string} params.externalReference  Número do pedido (conciliação)
+ * @param {number} [params.shipmentCost]     Frete em reais (adicionado ao total)
+ * @returns {Promise<{ initPoint: string, preferenceId: string|null }>}
  */
-export async function createPreference({ items, payer, externalReference }) {
-  if (!CREATE_PREFERENCE_URL) {
-    throw new Error(
-      'VITE_SUPABASE_URL não configurada — não é possível criar a preference do Mercado Pago.'
-    )
-  }
+export async function createPreference({ items, payer, externalReference, shipmentCost = 0 }) {
   if (!items?.length) {
-    throw new Error('Carrinho vazio: nada para pagar.')
-  }
-
-  // URLs de retorno após o pagamento (sucesso / falha / pendente)
-  const origin = window.location.origin
-  const back_urls = {
-    success: `${origin}/pedido-recebido?status=approved&order=${externalReference}`,
-    failure: `${origin}/checkout?status=failure`,
-    pending: `${origin}/pedido-recebido?status=pending&order=${externalReference}`,
+    throw new Error('Carrinho vazio: nada para pagar.');
   }
 
   const body = {
     items: mapItemsToMercadoPago(items),
     payer,
-    back_urls,
+    back_urls: buildBackUrls(),
     external_reference: String(externalReference),
+  };
+
+  // Frete entra como custo de envio (soma ao total da preference no Mercado Pago).
+  if (shipmentCost > 0) {
+    body.shipments = { cost: Number(shipmentCost), mode: 'not_specified' };
   }
 
-  let response
+  let response;
   try {
     response = await fetch(CREATE_PREFERENCE_URL, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        // Edge Functions do Supabase exigem o anon key por padrão
-        Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
-        apikey: SUPABASE_ANON_KEY,
-      },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
-    })
+    });
   } catch (err) {
     throw new Error(
       'Não foi possível contatar o servidor de pagamento. ' +
-      'Verifique se a Edge Function `create-preference` está publicada. ' +
+      'Em desenvolvimento, a função /api só roda com `vercel dev` (não no `npm run dev`). ' +
       `(${err.message})`
-    )
+    );
   }
 
   if (!response.ok) {
-    const detail = await response.text().catch(() => '')
+    const detail = await response.text().catch(() => '');
     throw new Error(
       `Falha ao criar pagamento no Mercado Pago (HTTP ${response.status}). ${detail}`
-    )
+    );
   }
 
-  const data = await response.json()
-  const initPoint = data.init_point || data.sandbox_init_point
+  const data = await response.json();
+  const initPoint = data.init_point || data.sandbox_init_point;
   if (!initPoint) {
-    throw new Error('A Edge Function não retornou um init_point válido.')
+    throw new Error('A resposta não trouxe um init_point válido.');
   }
 
-  return { initPoint, preferenceId: data.id ?? data.preference_id ?? null }
+  return { initPoint, preferenceId: data.id ?? null };
 }
 
-export default { createPreference, mercadoPagoPublicKey }
+export default { createPreference };
