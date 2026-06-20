@@ -74,7 +74,7 @@ export default function Login() {
     const errs = validateRegister();
     if (Object.keys(errs).length > 0) { setRegErrors(errs); return; }
     setRegErrors({});
-    const { success, needsConfirmation, loggedIn } = await register(regName, regEmail, regPwd);
+    const { success, loggedIn } = await register(regName, regEmail, regPwd);
     if (success) {
       setRegName(''); setRegEmail(''); setRegPwd('');
       if (loggedIn) {

@@ -24,6 +24,8 @@ function mapUser(supaUser) {
     id: supaUser.id,
     email: supaUser.email,
     name: meta.display_name || meta.full_name || supaUser.email?.split('@')[0] || 'Cliente',
+    // Data real de criação da conta (auth.users.created_at) — usada em "Cliente desde".
+    memberSince: supaUser.created_at ?? null,
   };
 }
 

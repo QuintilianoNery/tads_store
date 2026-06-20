@@ -25,6 +25,19 @@ function formatOrderDate(createdAt) {
   return new Date(createdAt).toLocaleDateString('pt-BR', { day: 'numeric', month: 'long', year: 'numeric' });
 }
 
+// Rótulo amigável do método de pagamento salvo no pedido.
+const PAYMENT_LABELS = { card: 'Cartão de crédito', pix: 'Pix', boleto: 'Boleto bancário' };
+
+// Estrutura o endereço (snapshot jsonb do pedido) para exibição nos detalhes.
+function formatOrderAddress(address) {
+  if (!address) return null;
+  const fullName = [address.firstName, address.lastName].filter(Boolean).join(' ');
+  const line1 = [address.address, address.number].filter(Boolean).join(', ');
+  const line2 = [address.city, address.state].filter(Boolean).join(' — ');
+  const line3 = [address.cep, address.country].filter(Boolean).join(' · ');
+  return { fullName, lines: [line1, line2, line3].filter(Boolean), phone: address.phone };
+}
+
 // Botão de mostrar/ocultar senha — usado no rightSlot do Input.
 function PasswordToggle({ shown, onToggle }) {
   return (
@@ -43,6 +56,8 @@ export default function Account() {
   const { user, nav, wishCount, logout } = useStore();
   const [activeTab, setActiveTab] = useState('pedidos');
   const name = user?.name || 'Visitante';
+  // Ano real de cadastro (vem de auth.users.created_at via mapUser).
+  const memberSinceYear = user?.memberSince ? new Date(user.memberSince).getFullYear() : null;
 
   // ── Dados pessoais (campos com máscara) ────────────────────
   const [profile, setProfile] = useState({ name, email: user?.email ?? '', cpf: '', phone: '' });
@@ -53,6 +68,7 @@ export default function Account() {
   const [loadingOrders, setLoadingOrders] = useState(true);
   const [reviewsByProduct, setReviewsByProduct] = useState({}); // { [productId]: review }
   const [reviewingKey, setReviewingKey] = useState(null);        // `${orderId}:${productId}` em edição
+  const [expandedOrder, setExpandedOrder] = useState(null);      // id do pedido com detalhes abertos
   useEffect(() => {
     let active = true;
     if (!user) { setLoadingOrders(false); return undefined; }
@@ -160,7 +176,9 @@ export default function Account() {
               <span style={{ width: 48, height: 48, borderRadius: 'var(--radius-full)', background: 'rgba(255,255,255,0.18)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'var(--font-display)', fontWeight: 'var(--font-extrabold)', fontSize: 'var(--text-xl)' }}>{name.charAt(0)}</span>
               <div>
                 <div style={{ fontWeight: 'var(--font-bold)' }}>Olá, {name}</div>
-                <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-primary-200)' }}>Cliente desde 2024</div>
+                <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-primary-200)' }}>
+                  {memberSinceYear ? `Cliente desde ${memberSinceYear}` : 'Bem-vindo(a)'}
+                </div>
               </div>
             </div>
           </div>
@@ -219,6 +237,14 @@ export default function Account() {
                           </div>
                           <span style={{ fontSize: '0.6875rem', fontWeight: 'var(--font-bold)', textTransform: 'uppercase', letterSpacing: '0.04em', padding: '4px 10px', borderRadius: 'var(--radius-full)', background: statusStyle.bg, color: statusStyle.fg, whiteSpace: 'nowrap' }}>{statusStyle.label}</span>
                           <span style={{ fontFamily: 'var(--font-display)', fontWeight: 'var(--font-bold)', color: 'var(--color-gray-900)', whiteSpace: 'nowrap' }}>{fmtBRL(order.total)}</span>
+                          <button
+                            onClick={() => setExpandedOrder((cur) => (cur === order.id ? null : order.id))}
+                            aria-expanded={expandedOrder === order.id}
+                            style={{ display: 'flex', alignItems: 'center', gap: 4, background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-primary-700)', fontSize: 'var(--text-sm)', fontWeight: 'var(--font-semibold)', whiteSpace: 'nowrap' }}
+                          >
+                            {expandedOrder === order.id ? 'Ocultar' : 'Ver detalhes'}
+                            <Icon.ChevronDown size={16} style={{ transform: expandedOrder === order.id ? 'rotate(180deg)' : 'none', transition: 'transform var(--transition-fast)' }} />
+                          </button>
                         </div>
 
                         {/* Itens do pedido com avaliação pós-compra */}
@@ -259,6 +285,38 @@ export default function Account() {
                             );
                           })}
                         </div>
+
+                        {/* Detalhes do pedido (entrega, pagamento, valores) */}
+                        {expandedOrder === order.id && (() => {
+                          const addr = formatOrderAddress(order.billing_address);
+                          return (
+                            <div style={{ borderTop: '1px solid var(--color-gray-100)', padding: 16, display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 20 }}>
+                              <div>
+                                <h4 style={{ fontSize: 'var(--text-xs)', fontWeight: 'var(--font-bold)', color: 'var(--color-gray-900)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>Entrega</h4>
+                                {addr ? (
+                                  <div style={{ fontSize: 'var(--text-sm)', color: 'var(--color-gray-600)', lineHeight: 1.5 }}>
+                                    {addr.fullName && <div style={{ color: 'var(--color-gray-800)', fontWeight: 'var(--font-semibold)' }}>{addr.fullName}</div>}
+                                    {addr.lines.map((line, i) => <div key={i}>{line}</div>)}
+                                    {addr.phone && <div>{addr.phone}</div>}
+                                  </div>
+                                ) : (
+                                  <p style={{ fontSize: 'var(--text-sm)', color: 'var(--color-gray-400)' }}>Endereço não informado.</p>
+                                )}
+                              </div>
+                              <div>
+                                <h4 style={{ fontSize: 'var(--text-xs)', fontWeight: 'var(--font-bold)', color: 'var(--color-gray-900)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>Pagamento</h4>
+                                <p style={{ fontSize: 'var(--text-sm)', color: 'var(--color-gray-600)' }}>{PAYMENT_LABELS[order.payment_method] ?? order.payment_method ?? '—'}</p>
+                              </div>
+                              <div>
+                                <h4 style={{ fontSize: 'var(--text-xs)', fontWeight: 'var(--font-bold)', color: 'var(--color-gray-900)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>Valores</h4>
+                                <div style={{ fontSize: 'var(--text-sm)', color: 'var(--color-gray-600)', display: 'flex', flexDirection: 'column', gap: 4 }}>
+                                  <div style={{ display: 'flex', justifyContent: 'space-between' }}><span>Subtotal</span><span>{fmtBRL(order.subtotal)}</span></div>
+                                  <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 'var(--font-bold)', color: 'var(--color-gray-900)' }}><span>Total</span><span>{fmtBRL(order.total)}</span></div>
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })()}
                       </div>
                     );
                   })}
