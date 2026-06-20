@@ -1,4 +1,5 @@
 // src/screens/Home.jsx — herói, trust strip, categorias, ofertas do dia, destaques
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ds';
 import { Icon } from '@/components/Icon.jsx';
 import { useStore } from '@/context/StoreContext';
@@ -7,6 +8,31 @@ import { Eyebrow, ProductGrid } from './shared.jsx';
 
 const categoryImage = (products, category) =>
   (products.find((product) => product.category === category) || {}).thumbnail;
+
+// Tempo restante até o fim do dia (23:59:59) no formato HH:MM:SS.
+function timeUntilEndOfDay() {
+  const now = new Date();
+  const endOfDay = new Date(now);
+  endOfDay.setHours(23, 59, 59, 999);
+  const totalSeconds = Math.max(0, Math.floor((endOfDay - now) / 1000));
+  const pad = (n) => String(n).padStart(2, '0');
+  return `${pad(Math.floor(totalSeconds / 3600))}:${pad(Math.floor((totalSeconds % 3600) / 60))}:${pad(totalSeconds % 60)}`;
+}
+
+// Contador regressivo das "promoções relâmpago". Cosmético: reinicia sozinho a
+// cada virada de dia, pois recalcula sempre a partir do horário atual.
+function FlashSaleCountdown() {
+  const [remaining, setRemaining] = useState(timeUntilEndOfDay);
+  useEffect(() => {
+    const id = setInterval(() => setRemaining(timeUntilEndOfDay()), 1000);
+    return () => clearInterval(id);
+  }, []);
+  return (
+    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8, background: '#fff', border: '1px solid #fde68a', borderRadius: 'var(--radius-full)', padding: '8px 14px', fontSize: 'var(--text-sm)', fontWeight: 'var(--font-bold)', color: 'var(--color-deal-text)' }}>
+      Termina em <span style={{ fontVariantNumeric: 'tabular-nums', letterSpacing: '0.04em' }}>{remaining}</span>
+    </span>
+  );
+}
 
 export default function Home() {
   const { nav, addToCart, toggleWish, wish, products, categories } = useStore();
@@ -96,9 +122,7 @@ export default function Home() {
                   <Icon.Zap size={26} style={{ color: 'var(--color-deal-strong)' }} /> Promoções relâmpago
                 </h2>
               </div>
-              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8, background: '#fff', border: '1px solid #fde68a', borderRadius: 'var(--radius-full)', padding: '8px 14px', fontSize: 'var(--text-sm)', fontWeight: 'var(--font-bold)', color: 'var(--color-deal-text)' }}>
-                Termina em 05:42:18
-              </span>
+              <FlashSaleCountdown />
             </div>
             <ProductGrid products={discountedProducts} nav={nav} addToCart={addToCart} toggleWish={toggleWish} wish={wish} />
           </div>
