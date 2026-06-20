@@ -14,6 +14,7 @@ const meta = {
     discountPercentage: { control: { type: 'range', min: 0, max: 90, step: 1 } },
     rating: { control: { type: 'range', min: 0, max: 5, step: 0.5 } },
     wishlisted: { control: 'boolean' },
+    outOfStock: { control: 'boolean' },
   },
   args: {
     title: 'Fones Bluetooth Pro com Cancelamento de Ruído',
@@ -24,6 +25,7 @@ const meta = {
     rating: 4.5,
     thumbnail: 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=600&q=80&auto=format&fit=crop',
     wishlisted: false,
+    outOfStock: false,
     onAddToCart: fn(),
     onToggleWishlist: fn(),
   },
@@ -72,6 +74,20 @@ export const NoDiscount = {
 };
 
 export const Wishlisted = { args: { wishlisted: true } };
+
+// Produto sem estoque: exibe o selo "Esgotado", oculta o badge de oferta e
+// desabilita a ação de adicionar ao carrinho.
+export const OutOfStock = {
+  args: { outOfStock: true },
+  play: async ({ args, canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(canvas.getByText('Esgotado')).toBeInTheDocument();
+    const addButton = canvas.getByRole('button', { name: 'Produto indisponível' });
+    await expect(addButton).toBeDisabled();
+    await userEvent.click(addButton);
+    await expect(args.onAddToCart).not.toHaveBeenCalled();
+  },
+};
 
 export const Grid = {
   decorators: [(Story) => <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 240px)', gap: 24 }}><Story /></div>],
