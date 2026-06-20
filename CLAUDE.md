@@ -31,7 +31,7 @@ real com **Supabase** (auth + dados) e catálogo da **API DummyJSON**.
 - `src/context/StoreContext.jsx` — **estado global**: catálogo, carrinho,
   favoritos, usuário/sessão, busca, navegação (`nav`), `placeOrder`. Hub central.
 - `src/screens/` — telas: Home, Catalog, Detail, Cart, Checkout, Login,
-  Account, Wishlist.
+  Account, Wishlist, Help (Central de Ajuda/FAQ).
 - `src/components/ds/` — design system (Button, Input, Badge, Spinner,
   StarRating, ProductCard) com stories `.stories.jsx`.
 - `src/components/AddressBook.jsx` — agenda de endereços (CRUD), usada na
@@ -46,7 +46,7 @@ real com **Supabase** (auth + dados) e catálogo da **API DummyJSON**.
 
 `nav(name, id?)` no `StoreContext` mapeia nomes → rotas via `ROUTE_PATH`.
 Chaves válidas: `home, catalog, detail, cart, checkout, login, wishlist,
-account`. Chave inexistente cai em `/` (home) — atenção a typos.
+account, help`. Chave inexistente cai em `/` (home) — atenção a typos.
 
 ## Supabase
 

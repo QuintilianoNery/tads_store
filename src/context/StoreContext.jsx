@@ -64,6 +64,7 @@ const ROUTE_PATH = {
   login: '/login',
   wishlist: '/lista-de-desejos',
   account: '/minha-conta',
+  help: '/ajuda',
 };
 
 export function StoreProvider({ children }) {

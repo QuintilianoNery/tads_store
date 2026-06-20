@@ -72,7 +72,7 @@ export default function Footer() {
           <FooterLink onClick={() => nav('login')}>Entrar / Cadastrar</FooterLink>
           <FooterLink onClick={() => nav('account')}>Meus Pedidos</FooterLink>
           <FooterLink onClick={() => nav('account')}>Configurações</FooterLink>
-          <FooterLink onClick={() => nav('home')}>Central de Ajuda</FooterLink>
+          <FooterLink onClick={() => nav('help')}>Central de Ajuda</FooterLink>
         </div>
 
         {/* Contato */}
