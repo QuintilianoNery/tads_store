@@ -33,3 +33,12 @@ memória), por isso os produtos "voltavam".
 
 Pesquisar filtra e limpa o campo; ir para uma categoria descarta o filtro de
 busca e mostra os produtos da categoria normalmente.
+
+## Atualização — filtros de Avaliação e Ofertas
+
+Mesmo sintoma com os filtros locais do catálogo (Avaliação "4+/3-" e Ofertas):
+ao aplicá-los e depois trocar de categoria, a categoria podia ficar sem
+produtos (o filtro continuava ativo). Correção: **selecionar uma categoria**
+(pela barra lateral ou pela navegação do menu/Home) agora **zera os filtros**
+de avaliação e ofertas — em `Catalog.jsx` (`setRatingFilter('all')` /
+`setDealsFilter('all')`).

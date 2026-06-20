@@ -21,17 +21,27 @@ export default function Catalog() {
   const initialCategory = useLocation().state?.cat || null;
   const [selectedCategory, setSelectedCategory] = useState(initialCategory || 'Todos');
   const [sortOrder, setSortOrder] = useState('relevancia');
-  const [minRating, setMinRating] = useState(0);
-  const [onlyDeals, setOnlyDeals] = useState(false);
-  useEffect(() => { if (initialCategory) setSelectedCategory(initialCategory); }, [initialCategory]);
+  const [ratingFilter, setRatingFilter] = useState('all'); // all | high (4+) | low (3-)
+  const [dealsFilter, setDealsFilter] = useState('all');    // all | with | without
+  // Ao chegar numa categoria pela navegação (menu/Home), troca a categoria e
+  // zera os filtros — eles não devem "vazar" entre categorias.
+  useEffect(() => {
+    if (initialCategory) {
+      setSelectedCategory(initialCategory);
+      setRatingFilter('all');
+      setDealsFilter('all');
+    }
+  }, [initialCategory]);
 
   let visibleProducts =
     selectedCategory === 'Todos'
       ? products.slice()
       : products.filter((product) => product.category === selectedCategory);
   if (search) visibleProducts = visibleProducts.filter((product) => product.title.toLowerCase().includes(search.toLowerCase()));
-  if (minRating) visibleProducts = visibleProducts.filter((product) => product.rating >= minRating);
-  if (onlyDeals) visibleProducts = visibleProducts.filter((product) => product.discountPercentage > 0);
+  if (ratingFilter === 'high') visibleProducts = visibleProducts.filter((product) => product.rating >= 4);
+  else if (ratingFilter === 'low') visibleProducts = visibleProducts.filter((product) => product.rating <= 3);
+  if (dealsFilter === 'with') visibleProducts = visibleProducts.filter((product) => product.discountPercentage > 0);
+  else if (dealsFilter === 'without') visibleProducts = visibleProducts.filter((product) => !(product.discountPercentage > 0));
   if (sortOrder === 'menor') visibleProducts.sort((a, b) => finalPrice(a) - finalPrice(b));
   else if (sortOrder === 'maior') visibleProducts.sort((a, b) => finalPrice(b) - finalPrice(a));
   else if (sortOrder === 'avaliados') visibleProducts.sort((a, b) => b.rating - a.rating);
@@ -55,7 +65,7 @@ export default function Catalog() {
           <FilterGroup title="Categorias">
             <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
               {categories.map((category) => (
-                <button key={category} onClick={() => { setSearch(''); setSelectedCategory(category); }}
+                <button key={category} onClick={() => { setSearch(''); setSelectedCategory(category); setRatingFilter('all'); setDealsFilter('all'); }}
                   style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '7px 10px', borderRadius: 'var(--radius-md)', border: 'none', cursor: 'pointer', textAlign: 'left', transition: 'all var(--transition-fast)',
                     background: selectedCategory === category ? 'var(--color-primary-50)' : 'transparent', color: selectedCategory === category ? 'var(--color-primary-800)' : 'var(--color-gray-600)', fontWeight: selectedCategory === category ? 'var(--font-bold)' : 'var(--font-medium)', fontSize: 'var(--text-sm)' }}>
                   {categoryLabel(category)} <span style={{ fontSize: 'var(--text-xs)', color: 'var(--color-gray-400)' }}>{countByCategory(category)}</span>
@@ -66,21 +76,34 @@ export default function Catalog() {
 
           <FilterGroup title="Avaliação">
             <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-              {[4, 3, 0].map((ratingOption) => (
-                <button key={ratingOption} onClick={() => setMinRating(ratingOption)}
+              {[
+                { value: 'all', label: 'Todas' },
+                { value: 'high', stars: 4, suffix: 'e acima' },
+                { value: 'low', stars: 3, suffix: 'e abaixo' },
+              ].map((option) => (
+                <button key={option.value} onClick={() => setRatingFilter(option.value)}
                   style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '7px 10px', borderRadius: 'var(--radius-md)', border: 'none', cursor: 'pointer', textAlign: 'left',
-                    background: minRating === ratingOption ? 'var(--color-primary-50)' : 'transparent', color: 'var(--color-gray-600)', fontSize: 'var(--text-sm)', fontWeight: minRating === ratingOption ? 'var(--font-bold)' : 'var(--font-medium)' }}>
-                  {ratingOption ? <><StarRating rating={ratingOption} size={13} /> e acima</> : 'Todas'}
+                    background: ratingFilter === option.value ? 'var(--color-primary-50)' : 'transparent', color: 'var(--color-gray-600)', fontSize: 'var(--text-sm)', fontWeight: ratingFilter === option.value ? 'var(--font-bold)' : 'var(--font-medium)' }}>
+                  {option.stars ? <><StarRating rating={option.stars} size={13} /> {option.suffix}</> : option.label}
                 </button>
               ))}
             </div>
           </FilterGroup>
 
           <FilterGroup title="Ofertas">
-            <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 'var(--text-sm)', color: 'var(--color-gray-700)' }}>
-              <input type="checkbox" checked={onlyDeals} onChange={(e) => setOnlyDeals(e.target.checked)} style={{ accentColor: 'var(--color-deal)', width: 16, height: 16 }} />
-              Só com desconto
-            </label>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+              {[
+                { value: 'all', label: 'Todas' },
+                { value: 'with', label: 'Só com ofertas' },
+                { value: 'without', label: 'Sem ofertas' },
+              ].map((option) => (
+                <button key={option.value} onClick={() => setDealsFilter(option.value)}
+                  style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '7px 10px', borderRadius: 'var(--radius-md)', border: 'none', cursor: 'pointer', textAlign: 'left',
+                    background: dealsFilter === option.value ? 'var(--color-primary-50)' : 'transparent', color: 'var(--color-gray-600)', fontSize: 'var(--text-sm)', fontWeight: dealsFilter === option.value ? 'var(--font-bold)' : 'var(--font-medium)' }}>
+                  {option.label}
+                </button>
+              ))}
+            </div>
           </FilterGroup>
         </aside>
 
