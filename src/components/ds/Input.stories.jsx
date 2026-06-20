@@ -12,6 +12,7 @@ const meta = {
     helperText: { control: 'text' },
     error: { control: 'text' },
     required: { control: 'boolean' },
+    disabled: { control: 'boolean' },
     type: { control: 'select', options: ['text', 'email', 'password', 'search', 'tel'] },
   },
   args: {
@@ -34,6 +35,16 @@ export const WithError = {
     const canvas = within(canvasElement);
     await expect(canvas.getByRole('alert')).toHaveTextContent('Informe um e-mail válido.');
     await expect(canvas.getByLabelText('E-mail')).toHaveAttribute('aria-invalid', 'true');
+  },
+};
+
+// Campo desabilitado: usado no checkout para exibir dados do cadastro como
+// resumo (somente leitura) antes de o usuário confirmar a compra.
+export const Disabled = {
+  args: { label: 'E-mail', defaultValue: 'maria@email.com', disabled: true, helperText: 'Do seu cadastro' },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(canvas.getByLabelText('E-mail')).toBeDisabled();
   },
 };
 

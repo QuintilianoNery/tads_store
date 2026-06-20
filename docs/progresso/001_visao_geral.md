@@ -14,6 +14,7 @@ Cada arquivo numerado registra uma etapa/assunto implementado:
 | `supabase/migrations/*_initial_schema.sql` | Script SQL das tabelas no Supabase |
 | `004_edge_function_create_preference.md` | Código e deploy da Edge Function de pagamento |
 | `005_mercadopago_setup.md` | Como obter credenciais MP e configurar `.env` |
+| `006_bug_filtro_busca_categorias.md` | Bug: filtro de busca preso ao navegar por categorias (corrigido) |
 
 ## Stack do projeto
 

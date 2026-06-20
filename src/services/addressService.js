@@ -81,6 +81,59 @@ export async function getDefaultAddress(userId) {
 }
 
 /**
+ * Lista todos os endereços do usuário (mais antigos primeiro), no formato da
+ * aplicação. Usado pela agenda de endereços (conta e checkout).
+ * @param {string} userId
+ * @returns {Promise<object[]>}
+ */
+export async function listAddresses(userId) {
+  const { data, error } = await supabase
+    .from('addresses')
+    .select('*')
+    .eq('user_id', userId)
+    .order('created_at', { ascending: true })
+  if (error) throw error
+  return (data ?? []).map(fromRow)
+}
+
+/**
+ * Cria um novo endereço para o usuário.
+ * @returns {Promise<object>} O endereço criado, no formato da aplicação.
+ */
+export async function createAddress(userId, data) {
+  const columns = toColumns({ userId, type: data.type || 'shipping', data })
+  const { data: saved, error } = await supabase
+    .from('addresses')
+    .insert(columns)
+    .select()
+    .single()
+  if (error) throw error
+  return fromRow(saved)
+}
+
+/**
+ * Atualiza um endereço existente pelo id.
+ * @returns {Promise<object>} O endereço atualizado, no formato da aplicação.
+ */
+export async function updateAddress(id, userId, data) {
+  const columns = toColumns({ userId, type: data.type || 'shipping', data })
+  const { data: saved, error } = await supabase
+    .from('addresses')
+    .update(columns)
+    .eq('id', id)
+    .select()
+    .single()
+  if (error) throw error
+  return fromRow(saved)
+}
+
+/** Remove um endereço pelo id. */
+export async function deleteAddress(id) {
+  const { error } = await supabase.from('addresses').delete().eq('id', id)
+  if (error) throw error
+}
+
+/**
  * Cria ou atualiza o endereço do usuário para o tipo informado.
  * A tabela não possui constraint única em (user_id, type), então buscamos
  * o id existente para decidir entre insert e update.

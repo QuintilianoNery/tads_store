@@ -52,6 +52,32 @@ export function slugToLabel(slug) {
 }
 
 /**
+ * Tradução pt-BR dos slugs de categoria do DummyJSON (categorias em inglês).
+ */
+const CATEGORY_PT_BR = {
+  laptops: 'Notebooks',
+  'mens-watches': 'Relógios Masculinos',
+  'mobile-accessories': 'Acessórios para Celular',
+  motorcycle: 'Motocicletas',
+  smartphones: 'Smartphones',
+  'sports-accessories': 'Acessórios Esportivos',
+  sunglasses: 'Óculos de Sol',
+  tablets: 'Tablets',
+  vehicle: 'Veículos',
+  'womens-watches': 'Relógios Femininos',
+}
+
+/**
+ * Rótulo de categoria em pt-BR. Usa o mapa de tradução e cai no slugToLabel
+ * para qualquer slug novo que ainda não tenha tradução.
+ * @example categoryLabel("mens-watches") → "Relógios Masculinos"
+ */
+export function categoryLabel(slug) {
+  if (!slug) return ''
+  return CATEGORY_PT_BR[slug] ?? slugToLabel(slug)
+}
+
+/**
  * Gera classe CSS de estrelas com base no rating (0–5).
  */
 export function getRatingStars(rating) {
