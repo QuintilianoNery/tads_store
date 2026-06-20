@@ -9,6 +9,7 @@ import {
   EMPTY_ADDRESS, listAddresses, createAddress, updateAddress, deleteAddress,
 } from '@/services/addressService';
 import { isNotEmpty } from '@/utils/validators';
+import { maskPhone, maskCep } from '@/utils/masks';
 
 function FieldRow({ cols, children }) {
   return <div style={{ display: 'grid', gridTemplateColumns: cols, gap: 12 }}>{children}</div>;
@@ -130,8 +131,8 @@ export function AddressBook({ userId, selectable = false, selectedId = null, onS
           <Input label="Sobrenome" value={form.lastName} onChange={(e) => update('lastName', e.target.value)} error={errors.lastName} required />
         </FieldRow>
         <FieldRow cols="1fr 1fr">
-          <Input label="Telefone" value={form.phone} onChange={(e) => update('phone', e.target.value)} error={errors.phone} placeholder="(11) 90000-0000" required />
-          <Input label="CEP" value={form.cep} onChange={(e) => update('cep', e.target.value)} error={errors.cep} placeholder="00000-000" required />
+          <Input label="Telefone" value={maskPhone(form.phone)} onChange={(e) => update('phone', maskPhone(e.target.value))} error={errors.phone} placeholder="(11) 90000-0000" required />
+          <Input label="CEP" value={maskCep(form.cep)} onChange={(e) => update('cep', maskCep(e.target.value))} error={errors.cep} placeholder="00000-000" required />
         </FieldRow>
         <FieldRow cols="2fr 1fr">
           <Input label="Endereço" value={form.address} onChange={(e) => update('address', e.target.value)} error={errors.address} placeholder="Rua / Avenida" required />
