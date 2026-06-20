@@ -4,11 +4,10 @@
 // de entrega para o histórico ser exibido sem depender de refetch.
 import { supabase } from './supabase'
 import { finalPrice } from '@/lib/format'
+import { orderNumber } from '@/lib/orderNumber'
 
-/** Número de pedido legível derivado do id (uuid) — ex.: TADS-A1B2C3. */
-export function orderNumber(order) {
-  return 'TADS-' + String(order?.id ?? '').replace(/-/g, '').slice(0, 6).toUpperCase()
-}
+// Re-exporta o formatador puro para os consumidores que já importam daqui.
+export { orderNumber }
 
 /**
  * Cria um pedido com seus itens.
