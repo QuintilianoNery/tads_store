@@ -38,3 +38,6 @@ pnpm-debug.log*
 lerna-debug.log*
 
 *storybook.log
+.vercel
+.env*
+!.env.example
