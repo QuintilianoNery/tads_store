@@ -1,11 +1,25 @@
 // src/screens/Account.jsx — área logada: perfil, stats, pedidos, dados, endereços
-import { useState } from 'react';
-import { Button, Input, Badge } from '@/components/ds';
+import { useState, useEffect } from 'react';
+import { Button, Input, Badge, Spinner } from '@/components/ds';
 import { Icon } from '@/components/Icon.jsx';
 import { useStore } from '@/context/StoreContext';
 import { changePassword } from '@/services/authService';
+import { getOrders, orderNumber } from '@/services/orderService';
 import { isNotEmpty, isValidPassword, MIN_PASSWORD_LENGTH } from '@/utils/validators';
 import { fmtBRL } from '@/lib/format';
+
+// Estilo e rótulo de cada status de pedido.
+const ORDER_STATUS = {
+  pago:      { label: 'Pago',      bg: '#dcfce7', fg: '#15803d' },
+  pendente:  { label: 'Pendente',  bg: '#fef3c7', fg: '#92400e' },
+  cancelado: { label: 'Cancelado', bg: '#fee2e2', fg: '#b91c1c' },
+};
+
+// Formata a data de criação do pedido em PT-BR (ex.: "4 de junho de 2026").
+function formatOrderDate(createdAt) {
+  if (!createdAt) return '';
+  return new Date(createdAt).toLocaleDateString('pt-BR', { day: 'numeric', month: 'long', year: 'numeric' });
+}
 
 // Botão de mostrar/ocultar senha — usado no rightSlot do Input.
 function PasswordToggle({ shown, onToggle }) {
@@ -21,16 +35,29 @@ function PasswordToggle({ shown, onToggle }) {
   );
 }
 
-const SAMPLE_ORDERS = [
-  { number: 'TADS-840127', date: '4 de junho de 2026', status: 'A caminho', statusTone: 'info', items: 2, total: 549.8 },
-  { number: 'TADS-771904', date: '21 de maio de 2026', status: 'Entregue', statusTone: 'success', items: 1, total: 389.0 },
-  { number: 'TADS-690455', date: '2 de maio de 2026', status: 'Entregue', statusTone: 'success', items: 3, total: 712.4 },
-];
-
 export default function Account() {
   const { user, nav, wishCount, logout } = useStore();
   const [activeTab, setActiveTab] = useState('pedidos');
   const name = user?.name || 'Visitante';
+
+  // ── Histórico de pedidos (Supabase) ────────────────────────
+  const [orders, setOrders] = useState([]);
+  const [loadingOrders, setLoadingOrders] = useState(true);
+  useEffect(() => {
+    let active = true;
+    if (!user) { setLoadingOrders(false); return undefined; }
+    (async () => {
+      try {
+        const data = await getOrders(user.id);
+        if (active) setOrders(data);
+      } catch (err) {
+        console.error('Falha ao carregar pedidos:', err);
+      } finally {
+        if (active) setLoadingOrders(false);
+      }
+    })();
+    return () => { active = false; };
+  }, [user]);
 
   // ── Troca de senha ─────────────────────────────────────────
   const [pwdForm, setPwdForm] = useState({ current: '', next: '', confirm: '' });
@@ -83,9 +110,8 @@ export default function Account() {
     { id: 'enderecos', label: 'Endereços', icon: <Icon.MapPin size={18} /> },
     { id: 'favoritos', label: 'Favoritos', icon: <Icon.Heart size={18} /> },
   ];
-  const statusColors = { info: { bg: '#dbeafe', fg: '#1d4ed8' }, success: { bg: '#dcfce7', fg: '#15803d' } };
   const stats = [
-    { value: SAMPLE_ORDERS.length, label: 'Pedidos' },
+    { value: orders.length, label: 'Pedidos' },
     { value: wishCount || 0, label: 'Favoritos' },
     { value: 3, label: 'Cupons' },
   ];
@@ -133,21 +159,35 @@ export default function Account() {
 
           {activeTab === 'pedidos' && (
             <section style={{ background: '#fff', border: '1px solid var(--color-gray-100)', borderRadius: 'var(--radius-lg)', padding: 24, boxShadow: 'var(--shadow-sm)' }}>
-              <h2 style={{ fontSize: 'var(--text-xl)', color: 'var(--color-gray-900)', marginBottom: 16 }}>Pedidos recentes</h2>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                {SAMPLE_ORDERS.map((order) => (
-                  <div key={order.number} style={{ display: 'flex', alignItems: 'center', gap: 16, padding: 16, border: '1px solid var(--color-gray-100)', borderRadius: 'var(--radius-md)', flexWrap: 'wrap' }}>
-                    <span style={{ width: 44, height: 44, borderRadius: 'var(--radius-md)', background: 'var(--color-primary-50)', color: 'var(--color-primary-700)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}><Icon.Truck size={20} /></span>
-                    <div style={{ flex: 1, minWidth: 140 }}>
-                      <div style={{ fontFamily: 'var(--font-display)', fontWeight: 'var(--font-bold)', color: 'var(--color-gray-900)', fontSize: 'var(--text-sm)' }}>{order.number}</div>
-                      <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-gray-500)' }}>{order.date} · {order.items} {order.items > 1 ? 'itens' : 'item'}</div>
-                    </div>
-                    <span style={{ fontSize: '0.6875rem', fontWeight: 'var(--font-bold)', textTransform: 'uppercase', letterSpacing: '0.04em', padding: '4px 10px', borderRadius: 'var(--radius-full)', background: statusColors[order.statusTone].bg, color: statusColors[order.statusTone].fg, whiteSpace: 'nowrap' }}>{order.status}</span>
-                    <span style={{ fontFamily: 'var(--font-display)', fontWeight: 'var(--font-bold)', color: 'var(--color-gray-900)', whiteSpace: 'nowrap' }}>{fmtBRL(order.total)}</span>
-                    <button onClick={() => nav('catalog')} style={{ fontSize: 'var(--text-sm)', fontWeight: 'var(--font-bold)', color: 'var(--color-accent)', background: 'none', border: 'none', cursor: 'pointer' }}>Comprar de novo</button>
-                  </div>
-                ))}
-              </div>
+              <h2 style={{ fontSize: 'var(--text-xl)', color: 'var(--color-gray-900)', marginBottom: 16 }}>Meus pedidos</h2>
+              {loadingOrders ? (
+                <div style={{ display: 'flex', justifyContent: 'center', padding: 32 }}><Spinner size={32} /></div>
+              ) : orders.length === 0 ? (
+                <div style={{ textAlign: 'center', padding: '32px 16px', color: 'var(--color-gray-500)' }}>
+                  <Icon.Truck size={36} style={{ color: 'var(--color-gray-300)', marginBottom: 10 }} />
+                  <p style={{ marginBottom: 16 }}>Você ainda não fez nenhum pedido.</p>
+                  <Button variant="primary" onClick={() => nav('catalog')}>Explorar produtos</Button>
+                </div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                  {orders.map((order) => {
+                    const itemList = order.order_items ?? [];
+                    const units = itemList.reduce((sum, it) => sum + (it.quantity ?? 0), 0);
+                    const statusStyle = ORDER_STATUS[order.status] ?? ORDER_STATUS.pendente;
+                    return (
+                      <div key={order.id} style={{ display: 'flex', alignItems: 'center', gap: 16, padding: 16, border: '1px solid var(--color-gray-100)', borderRadius: 'var(--radius-md)', flexWrap: 'wrap' }}>
+                        <span style={{ width: 44, height: 44, borderRadius: 'var(--radius-md)', background: 'var(--color-primary-50)', color: 'var(--color-primary-700)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}><Icon.Truck size={20} /></span>
+                        <div style={{ flex: 1, minWidth: 140 }}>
+                          <div style={{ fontFamily: 'var(--font-display)', fontWeight: 'var(--font-bold)', color: 'var(--color-gray-900)', fontSize: 'var(--text-sm)' }}>{orderNumber(order)}</div>
+                          <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-gray-500)' }}>{formatOrderDate(order.created_at)} · {units} {units > 1 ? 'itens' : 'item'}</div>
+                        </div>
+                        <span style={{ fontSize: '0.6875rem', fontWeight: 'var(--font-bold)', textTransform: 'uppercase', letterSpacing: '0.04em', padding: '4px 10px', borderRadius: 'var(--radius-full)', background: statusStyle.bg, color: statusStyle.fg, whiteSpace: 'nowrap' }}>{statusStyle.label}</span>
+                        <span style={{ fontFamily: 'var(--font-display)', fontWeight: 'var(--font-bold)', color: 'var(--color-gray-900)', whiteSpace: 'nowrap' }}>{fmtBRL(order.total)}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
             </section>
           )}
 
