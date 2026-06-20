@@ -17,7 +17,7 @@ function FilterGroup({ title, children }) {
 }
 
 export default function Catalog() {
-  const { nav, addToCart, toggleWish, wish, products, search, categories } = useStore();
+  const { nav, addToCart, toggleWish, wish, products, search, setSearch, categories } = useStore();
   const initialCategory = useLocation().state?.cat || null;
   const [selectedCategory, setSelectedCategory] = useState(initialCategory || 'Todos');
   const [sortOrder, setSortOrder] = useState('relevancia');
@@ -55,7 +55,7 @@ export default function Catalog() {
           <FilterGroup title="Categorias">
             <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
               {categories.map((category) => (
-                <button key={category} onClick={() => setSelectedCategory(category)}
+                <button key={category} onClick={() => { setSearch(''); setSelectedCategory(category); }}
                   style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '7px 10px', borderRadius: 'var(--radius-md)', border: 'none', cursor: 'pointer', textAlign: 'left', transition: 'all var(--transition-fast)',
                     background: selectedCategory === category ? 'var(--color-primary-50)' : 'transparent', color: selectedCategory === category ? 'var(--color-primary-800)' : 'var(--color-gray-600)', fontWeight: selectedCategory === category ? 'var(--font-bold)' : 'var(--font-medium)', fontSize: 'var(--text-sm)' }}>
                   {categoryLabel(category)} <span style={{ fontSize: 'var(--text-xs)', color: 'var(--color-gray-400)' }}>{countByCategory(category)}</span>

@@ -87,9 +87,12 @@ function CategoryGroupNav({ nav, label, slugs }) {
 }
 
 export default function Header() {
-  const { nav, user, cartCount, cartTotal, wishCount, logout, search, setSearch } = useStore();
+  const { nav, user, cartCount, cartTotal, wishCount, logout, setSearch } = useStore();
   const { pathname } = useLocation();
   const active = pathname === '/' ? 'home' : '';
+  // Texto local do campo de busca. Ao pesquisar, aplica o filtro global e
+  // limpa o campo — assim o termo não fica "preso" ao navegar para categorias.
+  const [query, setQuery] = useState('');
 
   const navItem = (label, to, key = to) => (
     <button
@@ -129,9 +132,9 @@ export default function Header() {
             <img src={LOGO} alt="TADS Store" style={{ height: 52, width: 'auto', objectFit: 'contain', display: 'block' }} />
           </button>
 
-          <form onSubmit={(e) => { e.preventDefault(); nav('catalog'); }} style={{ flex: 1, display: 'flex' }}>
+          <form onSubmit={(e) => { e.preventDefault(); setSearch(query.trim()); nav('catalog'); setQuery(''); }} style={{ flex: 1, display: 'flex' }}>
             <input
-              type="search" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Buscar produtos..."
+              type="search" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Buscar produtos..."
               style={{ flex: 1, padding: '12px 16px', border: '1.5px solid var(--color-gray-300)', borderRight: 'none', borderRadius: 'var(--radius-md) 0 0 var(--radius-md)', fontSize: 'var(--text-sm)', color: 'var(--color-gray-800)', outline: 'none' }}
             />
             <button type="submit" style={{ padding: '12px 16px', background: 'var(--color-primary-800)', color: '#fff', border: 'none', borderRadius: '0 var(--radius-md) var(--radius-md) 0', display: 'flex', alignItems: 'center', cursor: 'pointer' }}>

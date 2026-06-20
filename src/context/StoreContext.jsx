@@ -177,12 +177,15 @@ export function StoreProvider({ children }) {
     if (name === 'detail' && id != null) {
       navigate(`${base}/${id}`);
     } else if (name === 'catalog' && id != null) {
+      // Ir para uma categoria descarta o filtro de busca ativo (não deve
+      // continuar filtrando os produtos da categoria escolhida).
+      setSearch('');
       navigate(base, { state: { cat: id } });
     } else {
       navigate(base);
     }
     window.scrollTo(0, 0);
-  }, [navigate]);
+  }, [navigate, setSearch]);
 
   // Adiciona ao carrinho (bloqueia sem estoque e limita à quantidade em estoque)
   // e sincroniza se logado.
