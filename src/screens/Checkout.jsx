@@ -1,11 +1,12 @@
 // src/screens/Checkout.jsx — checkout em etapas: Entrega → Pagamento → Confirmação.
 // Rota protegida: o usuário está sempre logado. O endereço de entrega vem do
 // cadastro (Supabase) e pode ser confirmado (campos desabilitados) ou trocado.
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button, Input, Spinner } from '@/components/ds';
 import { Icon } from '@/components/Icon.jsx';
 import { useStore } from '@/context/StoreContext';
 import { getAddresses, saveAddress, EMPTY_ADDRESS } from '@/services/addressService';
+import { orderNumber } from '@/services/orderService';
 import { isNotEmpty } from '@/utils/validators';
 import { fmtBRL, finalPrice } from '@/lib/format';
 
@@ -82,7 +83,7 @@ function formatAddress(a) {
 }
 
 export default function Checkout() {
-  const { nav, cart, clearCart, user } = useStore();
+  const { nav, cart, placeOrder, user } = useStore();
   const items = Object.values(cart || {});
 
   const [step, setStep] = useState(0);
@@ -94,13 +95,16 @@ export default function Checkout() {
   const [savingAddr, setSavingAddr] = useState(false);
 
   const [paymentMethod, setPaymentMethod] = useState('card');
-  const [orderConfirmed, setOrderConfirmed] = useState(false);
+  const [placingOrder, setPlacingOrder] = useState(false);
+  const [finalizeError, setFinalizeError] = useState('');
+  // Pedido concluído (vindo do Supabase) — guarda o snapshot para a tela de
+  // sucesso, já que o carrinho é esvaziado ao finalizar.
+  const [confirmedOrder, setConfirmedOrder] = useState(null);
 
   const subtotal = items.reduce((total, item) => total + finalPrice(item.product) * item.qty, 0);
   const shippingCost = items.length ? (subtotal > 300 ? 0 : 29.9) : 0;
   const pixDiscount = paymentMethod === 'pix' ? +(subtotal * 0.05).toFixed(2) : 0;
   const orderTotal = subtotal + shippingCost - pixDiscount;
-  const orderNumber = useMemo(() => 'TADS-' + Math.floor(100000 + Math.random() * 899999), []);
 
   // Carrega o endereço do cadastro (Supabase). Se houver, mostra como resumo
   // confirmável; se não, abre o formulário para o usuário cadastrar.
@@ -163,8 +167,24 @@ export default function Checkout() {
 
   function goTo(n) { setStep(n); window.scrollTo(0, 0); }
 
+  // Registra o pedido (Supabase + atualização de estoque) e mostra a confirmação.
+  async function handleFinalize() {
+    setFinalizeError('');
+    setPlacingOrder(true);
+    try {
+      const order = await placeOrder({ subtotal, total: orderTotal, paymentMethod, address: form });
+      setConfirmedOrder(order);
+      window.scrollTo(0, 0);
+    } catch (err) {
+      console.error('Falha ao finalizar pedido:', err);
+      setFinalizeError('Não foi possível concluir o pedido. Tente novamente.');
+    } finally {
+      setPlacingOrder(false);
+    }
+  }
+
   // ── Pedido confirmado ──────────────────────────────────────
-  if (orderConfirmed) {
+  if (confirmedOrder) {
     return (
       <div className="container" style={{ padding: '64px 0', maxWidth: 560, textAlign: 'center' }}>
         <div style={{ width: 80, height: 80, borderRadius: 'var(--radius-full)', background: 'var(--color-success)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 22px', boxShadow: 'var(--shadow-lg)', animation: 'fadeIn 0.4s ease' }}>
@@ -175,17 +195,20 @@ export default function Checkout() {
         <div style={{ background: '#fff', border: '1px solid var(--color-gray-100)', borderRadius: 'var(--radius-lg)', padding: 24, boxShadow: 'var(--shadow-sm)', textAlign: 'left', marginBottom: 28 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: 12, marginBottom: 12, borderBottom: '1px solid var(--color-gray-100)' }}>
             <span style={{ color: 'var(--color-gray-500)', fontSize: 'var(--text-sm)' }}>Número do pedido</span>
-            <strong style={{ fontFamily: 'var(--font-display)', color: 'var(--color-gray-900)' }}>{orderNumber}</strong>
+            <strong style={{ fontFamily: 'var(--font-display)', color: 'var(--color-gray-900)' }}>{orderNumber(confirmedOrder)}</strong>
           </div>
           <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
             <span style={{ color: 'var(--color-gray-500)', fontSize: 'var(--text-sm)' }}>Total pago</span>
-            <strong style={{ fontFamily: 'var(--font-display)', color: 'var(--color-gray-900)' }}>{fmtBRL(orderTotal)}</strong>
+            <strong style={{ fontFamily: 'var(--font-display)', color: 'var(--color-gray-900)' }}>{fmtBRL(confirmedOrder.total)}</strong>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: 'var(--color-success)', fontSize: 'var(--text-sm)', fontWeight: 'var(--font-semibold)' }}>
             <Icon.Truck size={16} /> Entrega estimada: 3 dias úteis
           </div>
         </div>
-        <Button variant="primary" size="lg" onClick={() => { clearCart && clearCart(); nav('home'); }}>Voltar para a loja</Button>
+        <div style={{ display: 'flex', gap: 12, justifyContent: 'center' }}>
+          <Button variant="secondary" size="lg" onClick={() => nav('account')}>Ver meus pedidos</Button>
+          <Button variant="primary" size="lg" onClick={() => nav('catalog')}>Voltar para a loja</Button>
+        </div>
       </div>
     );
   }
@@ -349,9 +372,14 @@ export default function Checkout() {
                   </div>
                 </div>
               </div>
+              {finalizeError && (
+                <div role="alert" aria-live="assertive" style={{ display: 'flex', alignItems: 'center', gap: 8, background: '#fee2e2', color: '#b91c1c', padding: '10px 14px', borderRadius: 'var(--radius-md)', fontSize: 'var(--text-sm)', marginTop: 18 }}>
+                  <Icon.AlertCircle size={18} /> <span>{finalizeError}</span>
+                </div>
+              )}
               <div style={{ display: 'flex', gap: 12, marginTop: 22 }}>
-                <Button variant="ghost" size="lg" onClick={() => goTo(1)}><Icon.ChevronLeft size={18} /> Voltar</Button>
-                <Button variant="deal" size="lg" fullWidth onClick={() => { setOrderConfirmed(true); window.scrollTo(0, 0); }}><Icon.Lock size={18} /> Finalizar compra</Button>
+                <Button variant="ghost" size="lg" disabled={placingOrder} onClick={() => goTo(1)}><Icon.ChevronLeft size={18} /> Voltar</Button>
+                <Button variant="deal" size="lg" fullWidth disabled={placingOrder} onClick={handleFinalize}><Icon.Lock size={18} /> {placingOrder ? 'Processando...' : 'Finalizar compra'}</Button>
               </div>
             </Panel>
           )}

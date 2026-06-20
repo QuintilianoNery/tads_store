@@ -50,6 +50,25 @@ export async function getProductById(id) {
 }
 
 /**
+ * Atualiza o estoque de um produto na API (DummyJSON simula a alteração e
+ * devolve o produto atualizado, sem persistir de fato). Chamado ao finalizar
+ * um pedido para refletir o consumo do estoque.
+ * @param {number|string} id
+ * @param {number} stock - Nova quantidade em estoque
+ */
+export async function updateProductStock(id, stock) {
+  const response = await fetch(`${BASE_URL}/products/${id}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ stock }),
+  })
+  if (!response.ok) {
+    throw new Error(`Erro ${response.status}: ${response.statusText}`)
+  }
+  return response.json()
+}
+
+/**
  * Lista todas as categorias disponíveis.
  * @returns {Category[]} Array de objetos { slug, name, url }
  */

@@ -3,10 +3,11 @@
 // Espelha exatamente o modelo do protótipo TADS Store (offline): sem API/Supabase.
 import { createContext, useContext, useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { getAllProducts, getCategories } from '@/services/productService';
+import { getAllProducts, getCategories, updateProductStock } from '@/services/productService';
 import { signIn, signUp, signOut, onAuthStateChange } from '@/services/authService';
 import { getFavorites, addFavorite, removeFavorite } from '@/services/favoritesService';
 import { getCart, setCartItem, removeCartItem, clearCart as clearCartRemote } from '@/services/cartService';
+import { createOrder, getStockConsumption } from '@/services/orderService';
 import { finalPrice } from '@/lib/format';
 
 const StoreContext = createContext(null);
@@ -73,6 +74,9 @@ export function StoreProvider({ children }) {
   const [products, setProducts] = useState([]);
   const [categories, setCategories] = useState(['Todos']);
   const [loadingCatalog, setLoadingCatalog] = useState(true);
+  // Estoque original da DummyJSON por produto. A baixa real vem dos pedidos
+  // (a API é mock e não persiste), então recalculamos sempre a partir da base.
+  const baseStockRef = useRef({});
 
   useEffect(() => {
     let active = true;
@@ -84,6 +88,7 @@ export function StoreProvider({ children }) {
         const allowedProducts = (productsResponse.products ?? []).filter((product) =>
           ALLOWED_CATEGORIES.has(product.category)
         );
+        baseStockRef.current = Object.fromEntries(allowedProducts.map((p) => [p.id, p.stock]));
         setProducts(allowedProducts);
         // /products/categories pode devolver strings ou objetos { slug, name, url }.
         const allowedSlugs = (categoriesResponse ?? [])
@@ -141,6 +146,29 @@ export function StoreProvider({ children }) {
     })();
     return () => { active = false; };
   }, [userId]);
+
+  // Recalcula o estoque exibido a partir da base da DummyJSON, descontando o
+  // que o usuário já comprou (consumed = { productId: qtd }). Sem usuário ou
+  // sem consumo, mantém o estoque-base.
+  const applyStockConsumption = useCallback((consumed) => {
+    setProducts((prev) => prev.map((p) => {
+      const base = baseStockRef.current[p.id];
+      if (base == null) return p;
+      return { ...p, stock: Math.max(0, base - (consumed[p.id] || 0)) };
+    }));
+  }, []);
+
+  // Aplica a baixa persistida (pedidos) assim que o catálogo carrega e a cada
+  // login/logout, para o estoque refletir as compras anteriores após reload.
+  useEffect(() => {
+    if (loadingCatalog) return undefined;
+    if (!userId) { applyStockConsumption({}); return undefined; }
+    let active = true;
+    getStockConsumption(userId)
+      .then((consumed) => { if (active) applyStockConsumption(consumed); })
+      .catch((err) => console.error('Falha ao calcular estoque a partir dos pedidos:', err));
+    return () => { active = false; };
+  }, [userId, loadingCatalog, applyStockConsumption]);
 
   // nav('catalog', 'Eletrônicos') / nav('detail', 3) / nav('home')
   const nav = useCallback((name, id = null) => {
@@ -209,6 +237,36 @@ export function StoreProvider({ children }) {
     setCart({});
     if (userId) clearCartRemote(userId).catch((err) => console.error('Falha ao sincronizar carrinho:', err));
   }, [userId]);
+
+  // Finaliza a compra: registra o pedido no Supabase, atualiza o estoque dos
+  // produtos comprados na API (DummyJSON), reflete o novo estoque localmente e
+  // esvazia o carrinho. A atualização de estoque é best-effort — uma falha de
+  // rede não desfaz o pedido já registrado.
+  const placeOrder = useCallback(async ({ subtotal, total, paymentMethod, address }) => {
+    if (!userId) throw new Error('NOT_AUTHENTICATED');
+    const items = Object.values(cart);
+    if (!items.length) throw new Error('EMPTY_CART');
+
+    const order = await createOrder({ userId, items, subtotal, total, paymentMethod, address });
+
+    // Reflete a baixa no estoque exibido, descontando do valor atual.
+    setProducts((prev) => prev.map((p) => {
+      const item = cart[p.id];
+      return item ? { ...p, stock: Math.max(0, (p.stock ?? 0) - item.qty) } : p;
+    }));
+
+    // Dispara a atualização na API (best-effort; a DummyJSON é mock e não
+    // persiste, mas o requisito da etapa é fazer a requisição).
+    await Promise.allSettled(
+      items.map(({ product, qty }) => updateProductStock(product.id, Math.max(0, (product.stock ?? 0) - qty)))
+    ).then((results) => {
+      results.forEach((r) => { if (r.status === 'rejected') console.error('Falha ao atualizar estoque na API:', r.reason); });
+    });
+
+    setCart({});
+    clearCartRemote(userId).catch((err) => console.error('Falha ao limpar carrinho:', err));
+    return order;
+  }, [cart, userId]);
 
   // ─── Autenticação (Supabase) ────────────────────────────────
   const clearAuthError = useCallback(() => setAuthError(null), []);
@@ -282,10 +340,10 @@ export function StoreProvider({ children }) {
 
   const value = useMemo(() => ({
     products, categories, loadingCatalog, user, cart, wish, search, setSearch,
-    nav, addToCart, setQty, removeItem, toggleWish, clearCart,
+    nav, addToCart, setQty, removeItem, toggleWish, clearCart, placeOrder,
     login, register, logout, authLoading, authError, authInitializing, clearAuthError,
     cartCount, cartTotal, wishCount,
-  }), [products, categories, loadingCatalog, user, cart, wish, search, nav, addToCart, setQty, removeItem, toggleWish, clearCart, login, register, logout, authLoading, authError, authInitializing, clearAuthError, cartCount, cartTotal, wishCount]);
+  }), [products, categories, loadingCatalog, user, cart, wish, search, nav, addToCart, setQty, removeItem, toggleWish, clearCart, placeOrder, login, register, logout, authLoading, authError, authInitializing, clearAuthError, cartCount, cartTotal, wishCount]);
 
   return <StoreContext.Provider value={value}>{children}</StoreContext.Provider>;
 }
