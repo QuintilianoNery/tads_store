@@ -5,6 +5,10 @@ Scripts SQL do banco de dados da **TADS Store**.
 | Arquivo | Descrição |
 |---|---|
 | `20260608000000_initial_schema.sql` | Tabelas (`profiles`, `addresses`, `orders`, `order_items`), RLS e trigger de criação de perfil. |
+| `20260619000000_favorites.sql` | Tabela `favorites` (lista de desejos por usuário) + RLS. |
+| `20260619000001_cart.sql` | Tabela `cart_items` (carrinho persistente por usuário) + RLS. |
+| `20260620000000_reviews.sql` | Tabela `reviews` (avaliações com estrelas + comentário) + RLS. |
+| `20260620010000_reviews_sem_moderacao.sql` | Remove a moderação: leitura pública de todas as avaliações (aparecem na hora). |
 
 ## Como aplicar
 

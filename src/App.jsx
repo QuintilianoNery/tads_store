@@ -9,6 +9,7 @@ import { StoreProvider } from '@/context/StoreContext'
 import { Spinner } from '@/components/ds'
 import Header from '@/components/Header'
 import Footer from '@/components/Footer'
+import RotaProtegida from '@/components/RotaProtegida'
 
 const Home     = lazy(() => import('@/screens/Home'))
 const Catalog  = lazy(() => import('@/screens/Catalog'))
@@ -18,6 +19,7 @@ const Checkout = lazy(() => import('@/screens/Checkout'))
 const Login    = lazy(() => import('@/screens/Login'))
 const Account  = lazy(() => import('@/screens/Account'))
 const Wishlist = lazy(() => import('@/screens/Wishlist'))
+const Help     = lazy(() => import('@/screens/Help'))
 
 // Fallback centralizado enquanto a tela carrega.
 function ScreenFallback() {
@@ -53,10 +55,11 @@ function App() {
             <Route path="produtos"        element={<Catalog />} />
             <Route path="produto/:id"     element={<Detail />} />
             <Route path="carrinho"        element={<Cart />} />
-            <Route path="checkout"        element={<Checkout />} />
+            <Route path="checkout"        element={<RotaProtegida><Checkout /></RotaProtegida>} />
             <Route path="login"           element={<Login />} />
             <Route path="lista-de-desejos" element={<Wishlist />} />
-            <Route path="minha-conta"     element={<Account />} />
+            <Route path="minha-conta"     element={<RotaProtegida><Account /></RotaProtegida>} />
+            <Route path="ajuda"           element={<Help />} />
             <Route path="*"               element={<Home />} />
           </Route>
         </Routes>

@@ -1,6 +1,7 @@
 // src/screens/shared.jsx — peças reutilizadas pelas telas (eyebrow + grade de produtos)
 import { ProductCard } from '@/components/ds';
 import { finalPrice } from '@/lib/format';
+import { categoryLabel } from '@/utils/formatters';
 
 export function Eyebrow({ children, color }) {
   return (
@@ -13,14 +14,15 @@ export function Eyebrow({ children, color }) {
 export function ProductGrid({ products, nav, addToCart, toggleWish, wish, minWidth = 230 }) {
   return (
     <div style={{ display: 'grid', gridTemplateColumns: `repeat(auto-fill, minmax(${minWidth}px, 1fr))`, gap: 24 }}>
-      {products.map((p) => (
-        <div key={p.id} onClick={() => nav('detail', p.id)} style={{ cursor: 'pointer' }}>
+      {products.map((product) => (
+        <div key={product.id} onClick={() => nav('detail', product.id)} style={{ cursor: 'pointer' }}>
           <ProductCard
-            title={p.title} category={p.category} price={finalPrice(p)} originalPrice={p.price}
-            discountPercentage={p.discountPercentage} rating={p.rating} thumbnail={p.thumbnail}
-            wishlisted={!!wish[p.id]}
-            onAddToCart={(e) => { e && e.stopPropagation && e.stopPropagation(); addToCart(p); }}
-            onToggleWishlist={(e) => { e && e.stopPropagation && e.stopPropagation(); toggleWish(p.id); }}
+            title={product.title} category={categoryLabel(product.category)} price={finalPrice(product)} originalPrice={product.price}
+            discountPercentage={product.discountPercentage} rating={product.rating} thumbnail={product.thumbnail}
+            wishlisted={!!wish[product.id]}
+            outOfStock={product.stock <= 0}
+            onAddToCart={(e) => { e && e.stopPropagation && e.stopPropagation(); addToCart(product); }}
+            onToggleWishlist={(e) => { e && e.stopPropagation && e.stopPropagation(); toggleWish(product.id); }}
           />
         </div>
       ))}
