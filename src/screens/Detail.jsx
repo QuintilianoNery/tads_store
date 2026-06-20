@@ -1,21 +1,36 @@
 // src/screens/Detail.jsx — galeria com zoom, bloco de preço, CTAs, trust, reviews, relacionados
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { Button, Badge, StarRating } from '@/components/ds';
 import { Icon } from '@/components/Icon.jsx';
 import { useStore } from '@/context/StoreContext';
 import { fmtBRL, finalPrice, galleryFor } from '@/lib/format';
 import { categoryLabel } from '@/utils/formatters';
+import { getProductReviews } from '@/services/reviewService';
 import { Eyebrow, ProductGrid } from './shared.jsx';
 
-const REVIEWS = [
-  { author: 'Mariana Alves', date: '2 de junho de 2026', rating: 5, text: 'Superou as expectativas. Chegou antes do prazo e a qualidade é impecável. Já é meu produto favorito.' },
-  { author: 'Rafael Souza', date: '28 de maio de 2026', rating: 4, text: 'Muito bom pelo preço. Recomendo — só achei a embalagem um pouco simples para um item desse nível.' },
-  { author: 'Carla Mendes', date: '21 de maio de 2026', rating: 5, text: 'Atendimento rápido e produto exatamente como descrito. Voltarei a comprar na TADS com certeza.' },
-];
+// Distribuição ilustrativa do catálogo, usada enquanto não há avaliações reais.
 const RATING_BREAKDOWN = [
   { stars: 5, pct: 72 }, { stars: 4, pct: 19 }, { stars: 3, pct: 6 }, { stars: 2, pct: 2 }, { stars: 1, pct: 1 },
 ];
+
+// Formata a data da avaliação em PT-BR (ex.: "2 de junho de 2026").
+function formatReviewDate(createdAt) {
+  if (!createdAt) return '';
+  return new Date(createdAt).toLocaleDateString('pt-BR', { day: 'numeric', month: 'long', year: 'numeric' });
+}
+
+// Calcula média e distribuição (%) das notas a partir das avaliações reais.
+function summarize(reviews) {
+  const count = reviews.length;
+  if (!count) return null;
+  const sum = reviews.reduce((acc, r) => acc + r.rating, 0);
+  const breakdown = [5, 4, 3, 2, 1].map((stars) => ({
+    stars,
+    pct: Math.round((reviews.filter((r) => r.rating === stars).length / count) * 100),
+  }));
+  return { count, average: sum / count, breakdown };
+}
 
 function Gallery({ images, discount }) {
   const [active, setActive] = useState(0);
@@ -58,18 +73,24 @@ function Gallery({ images, discount }) {
   );
 }
 
-function ReviewsBlock({ rating }) {
+function ReviewsBlock({ rating, reviews }) {
+  const summary = summarize(reviews);
+  const headlineRating = summary ? summary.average : rating;
+  const breakdown = summary ? summary.breakdown : RATING_BREAKDOWN;
+
   return (
     <section style={{ marginTop: 56, borderTop: '1px solid var(--color-gray-200)', paddingTop: 40 }}>
       <Eyebrow>Opiniões</Eyebrow>
       <h2 style={{ fontSize: 'var(--text-2xl)', color: 'var(--color-gray-900)', margin: '6px 0 28px' }}>Avaliações de clientes</h2>
       <div style={{ display: 'grid', gridTemplateColumns: 'minmax(220px, 280px) 1fr', gap: 40, alignItems: 'start' }}>
         <div style={{ background: '#fff', border: '1px solid var(--color-gray-100)', borderRadius: 'var(--radius-lg)', padding: 24, boxShadow: 'var(--shadow-sm)', textAlign: 'center' }}>
-          <div style={{ fontFamily: 'var(--font-display)', fontSize: '3rem', fontWeight: 'var(--font-extrabold)', color: 'var(--color-gray-900)', lineHeight: 1 }}>{rating.toFixed(1)}</div>
-          <div style={{ display: 'flex', justifyContent: 'center', margin: '10px 0 6px' }}><StarRating rating={rating} size={18} /></div>
-          <p style={{ fontSize: 'var(--text-sm)', color: 'var(--color-gray-500)' }}>Baseado em 248 avaliações</p>
+          <div style={{ fontFamily: 'var(--font-display)', fontSize: '3rem', fontWeight: 'var(--font-extrabold)', color: 'var(--color-gray-900)', lineHeight: 1 }}>{headlineRating.toFixed(1)}</div>
+          <div style={{ display: 'flex', justifyContent: 'center', margin: '10px 0 6px' }}><StarRating rating={headlineRating} size={18} /></div>
+          <p style={{ fontSize: 'var(--text-sm)', color: 'var(--color-gray-500)' }}>
+            {summary ? `Baseado em ${summary.count} ${summary.count > 1 ? 'avaliações' : 'avaliação'}` : 'Nota média do catálogo'}
+          </p>
           <div style={{ marginTop: 18, display: 'flex', flexDirection: 'column', gap: 8 }}>
-            {RATING_BREAKDOWN.map((breakdownRow) => (
+            {breakdown.map((breakdownRow) => (
               <div key={breakdownRow.stars} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                 <span style={{ fontSize: 'var(--text-xs)', color: 'var(--color-gray-500)', width: 28, display: 'flex', alignItems: 'center', gap: 2 }}>{breakdownRow.stars}<Icon.Star size={11} filled style={{ color: '#f6ad55' }} /></span>
                 <div style={{ flex: 1, height: 7, background: 'var(--color-gray-100)', borderRadius: 'var(--radius-full)', overflow: 'hidden' }}>
@@ -81,24 +102,34 @@ function ReviewsBlock({ rating }) {
           </div>
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-          {REVIEWS.map((review, i) => (
-            <div key={i} style={{ background: '#fff', border: '1px solid var(--color-gray-100)', borderRadius: 'var(--radius-lg)', padding: 20, boxShadow: 'var(--shadow-sm)' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 8 }}>
-                <span style={{ width: 40, height: 40, borderRadius: 'var(--radius-full)', background: 'var(--color-primary-700)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'var(--font-display)', fontWeight: 'var(--font-bold)' }}>{review.author.charAt(0)}</span>
-                <div style={{ flex: 1 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <strong style={{ fontSize: 'var(--text-sm)', color: 'var(--color-gray-900)' }}>{review.author}</strong>
-                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3, fontSize: '0.625rem', fontWeight: 'var(--font-bold)', color: 'var(--color-success)', textTransform: 'uppercase', letterSpacing: '0.04em', whiteSpace: 'nowrap' }}><Icon.Check size={12} /> Verificada</span>
-                  </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 2 }}>
-                    <StarRating rating={review.rating} size={13} />
-                    <span style={{ fontSize: 'var(--text-xs)', color: 'var(--color-gray-400)' }}>{review.date}</span>
-                  </div>
-                </div>
-              </div>
-              <p style={{ fontSize: 'var(--text-sm)', color: 'var(--color-gray-600)', lineHeight: 1.65 }}>{review.text}</p>
+          {reviews.length === 0 ? (
+            <div style={{ background: '#fff', border: '1px dashed var(--color-gray-200)', borderRadius: 'var(--radius-lg)', padding: 32, textAlign: 'center', color: 'var(--color-gray-500)' }}>
+              <Icon.Star size={28} style={{ color: 'var(--color-gray-300)', marginBottom: 8 }} />
+              <p>Este produto ainda não tem avaliações. Compre e seja o primeiro a avaliar!</p>
             </div>
-          ))}
+          ) : (
+            reviews.map((review) => {
+              const author = review.author_name || 'Cliente';
+              return (
+                <div key={review.id} style={{ background: '#fff', border: '1px solid var(--color-gray-100)', borderRadius: 'var(--radius-lg)', padding: 20, boxShadow: 'var(--shadow-sm)' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 8 }}>
+                    <span style={{ width: 40, height: 40, borderRadius: 'var(--radius-full)', background: 'var(--color-primary-700)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'var(--font-display)', fontWeight: 'var(--font-bold)' }}>{author.charAt(0).toUpperCase()}</span>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <strong style={{ fontSize: 'var(--text-sm)', color: 'var(--color-gray-900)' }}>{author}</strong>
+                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3, fontSize: '0.625rem', fontWeight: 'var(--font-bold)', color: 'var(--color-success)', textTransform: 'uppercase', letterSpacing: '0.04em', whiteSpace: 'nowrap' }}><Icon.Check size={12} /> Verificada</span>
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 2 }}>
+                        <StarRating rating={review.rating} size={13} />
+                        <span style={{ fontSize: 'var(--text-xs)', color: 'var(--color-gray-400)' }}>{formatReviewDate(review.created_at)}</span>
+                      </div>
+                    </div>
+                  </div>
+                  {review.comment && <p style={{ fontSize: 'var(--text-sm)', color: 'var(--color-gray-600)', lineHeight: 1.65 }}>{review.comment}</p>}
+                </div>
+              );
+            })
+          )}
         </div>
       </div>
     </section>
@@ -110,7 +141,18 @@ export default function Detail() {
   const { id } = useParams();
   const [qty, setQty] = useState(1);
   const [stockAlert, setStockAlert] = useState('');
+  const [reviews, setReviews] = useState([]);
   const productId = Number(id);
+
+  // Avaliações reais do produto (públicas, sem moderação).
+  useEffect(() => {
+    let active = true;
+    if (!Number.isFinite(productId)) return undefined;
+    getProductReviews(productId)
+      .then((data) => { if (active) setReviews(data); })
+      .catch((err) => console.error('Falha ao carregar avaliações:', err));
+    return () => { active = false; };
+  }, [productId]);
   const product = products.find((item) => item.id === productId) || products[0];
   // Catálogo ainda carregando (lista vazia): evita quebrar antes do fetch concluir.
   if (!product) {
@@ -166,7 +208,9 @@ export default function Detail() {
           <h1 style={{ fontSize: 'var(--text-4xl)', color: 'var(--color-gray-900)', margin: '8px 0 14px', lineHeight: 1.12 }}>{product.title}</h1>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 22 }}>
             <StarRating rating={product.rating} size={18} />
-            <span style={{ fontSize: 'var(--text-sm)', color: 'var(--color-gray-500)' }}>{product.rating} · 248 avaliações</span>
+            <span style={{ fontSize: 'var(--text-sm)', color: 'var(--color-gray-500)' }}>
+              {product.rating}{reviews.length > 0 ? ` · ${reviews.length} ${reviews.length > 1 ? 'avaliações' : 'avaliação'}` : ''}
+            </span>
             <span style={{ fontSize: 'var(--text-sm)', color: isOut || product.stock < 10 ? 'var(--color-danger)' : 'var(--color-success)', fontWeight: 'var(--font-semibold)' }}>
               {isOut ? 'Indisponível' : product.stock < 10 ? `Últimas ${product.stock} unidades` : 'Em estoque'}
             </span>
@@ -229,7 +273,7 @@ export default function Detail() {
         </div>
       </div>
 
-      <ReviewsBlock rating={product.rating} />
+      <ReviewsBlock rating={product.rating} reviews={reviews} />
 
       <section style={{ marginTop: 56 }}>
         <h2 style={{ fontSize: 'var(--text-2xl)', color: 'var(--color-gray-900)', marginBottom: 22 }}>Você também pode gostar</h2>
