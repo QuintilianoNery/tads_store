@@ -7,6 +7,7 @@ import { useStore } from '@/context/StoreContext';
 import { changePassword } from '@/services/authService';
 import { getOrders, orderNumber } from '@/services/orderService';
 import { isNotEmpty, isValidPassword, MIN_PASSWORD_LENGTH } from '@/utils/validators';
+import { maskCpfCnpj, maskPhone, maskEmail } from '@/utils/masks';
 import { fmtBRL } from '@/lib/format';
 
 // Estilo e rótulo de cada status de pedido.
@@ -40,6 +41,10 @@ export default function Account() {
   const { user, nav, wishCount, logout } = useStore();
   const [activeTab, setActiveTab] = useState('pedidos');
   const name = user?.name || 'Visitante';
+
+  // ── Dados pessoais (campos com máscara) ────────────────────
+  const [profile, setProfile] = useState({ name, email: user?.email ?? '', cpf: '', phone: '' });
+  const updateProfile = (field, value) => setProfile((p) => ({ ...p, [field]: value }));
 
   // ── Histórico de pedidos (Supabase) ────────────────────────
   const [orders, setOrders] = useState([]);
@@ -197,10 +202,10 @@ export default function Account() {
               <section style={{ background: '#fff', border: '1px solid var(--color-gray-100)', borderRadius: 'var(--radius-lg)', padding: 24, boxShadow: 'var(--shadow-sm)' }}>
                 <h2 style={{ fontSize: 'var(--text-xl)', color: 'var(--color-gray-900)', marginBottom: 18 }}>Dados pessoais</h2>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 16 }}>
-                  <Input label="Nome completo" defaultValue={name} />
-                  <Input label="E-mail" type="email" defaultValue={user?.email ?? ''} />
-                  <Input label="CPF" defaultValue="000.000.000-00" />
-                  <Input label="Telefone" defaultValue="(11) 90000-0000" />
+                  <Input label="Nome completo" value={profile.name} onChange={(e) => updateProfile('name', e.target.value)} />
+                  <Input label="E-mail" type="email" value={profile.email} onChange={(e) => updateProfile('email', maskEmail(e.target.value))} />
+                  <Input label="CPF / CNPJ" value={profile.cpf} onChange={(e) => updateProfile('cpf', maskCpfCnpj(e.target.value))} placeholder="000.000.000-00" />
+                  <Input label="Telefone" value={profile.phone} onChange={(e) => updateProfile('phone', maskPhone(e.target.value))} placeholder="(11) 90000-0000" />
                 </div>
                 <div style={{ marginTop: 18 }}><Button variant="primary">Salvar alterações</Button></div>
               </section>
