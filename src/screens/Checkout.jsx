@@ -4,7 +4,6 @@
 // Mercado Pago (Checkout Pro): ao confirmar, criamos a preference no servidor e
 // redirecionamos o comprador. O pedido é registrado no retorno (/pedido-recebido).
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ds';
 import { Icon } from '@/components/Icon.jsx';
 import { AddressBook } from '@/components/AddressBook.jsx';
@@ -68,7 +67,6 @@ function formatAddress(a) {
 
 export default function Checkout() {
   const { nav, cart, user, createPendingOrder } = useStore();
-  const navigate = useNavigate();
   const items = Object.values(cart || {});
 
   const [step, setStep] = useState(0);
@@ -91,15 +89,12 @@ export default function Checkout() {
 
   function goTo(n) { setStep(n); window.scrollTo(0, 0); }
 
-  // Cria o pedido (pendente) + a preference, abre o Mercado Pago em NOVA aba e
-  // deixa esta aba aguardando a confirmação. O pedido é confirmado pelo webhook
-  // (servidor) — à prova de fechar a aba do pagamento.
+  // Cria o pedido (pendente) + a preference e redireciona ao Checkout Pro na
+  // MESMA aba. Ao terminar, o Mercado Pago volta para /pedido-recebido (com o
+  // status e o external_reference), que confirma o pedido. O webhook (servidor)
+  // segue como reforço, caso o cliente feche a aba antes de voltar.
   async function handlePay() {
     setPayError('');
-    // Abre a aba de pagamento JÁ no clique (gesto do usuário); se abrirmos depois
-    // do await, o bloqueador de pop-up barra. Fica numa tela em branco até termos
-    // o init_point.
-    const payWindow = window.open('', '_blank');
     setRedirecting(true);
     try {
       const order = await createPendingOrder({ subtotal, total: orderTotal, address: selectedAddress });
@@ -114,18 +109,11 @@ export default function Checkout() {
       if (preferenceId) {
         setOrderPreference(order.id, preferenceId).catch((err) => console.error('Falha ao vincular preference:', err));
       }
+      // Guarda o id como fallback (o MP também devolve em external_reference).
       sessionStorage.setItem(PENDING_ORDER_ID_KEY, order.id);
-
-      if (payWindow) {
-        payWindow.location.href = initPoint;             // paga na nova aba
-        navigate(`/pedido-recebido?order=${order.id}`);  // esta aba acompanha
-      } else {
-        // Pop-up bloqueado: cai no fluxo de mesma aba (redirect).
-        window.location.href = initPoint;
-      }
+      window.location.href = initPoint; // mesma aba → Checkout Pro → volta para /pedido-recebido
     } catch (err) {
       console.error('Falha ao iniciar pagamento:', err);
-      if (payWindow) payWindow.close();
       sessionStorage.removeItem(PENDING_ORDER_ID_KEY);
       setPayError('Não foi possível iniciar o pagamento. Tente novamente.');
       setRedirecting(false);
