@@ -53,13 +53,13 @@ export default function Home() {
         <div className="container" style={{ display: 'grid', gridTemplateColumns: '1.1fr 0.9fr', gap: 56, alignItems: 'center' }}>
           <div>
             <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '6px 14px', background: 'var(--color-deal)', color: 'var(--color-gray-900)', borderRadius: 'var(--radius-full)', fontSize: 'var(--text-xs)', fontWeight: 'var(--font-bold)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 20 }}>
-              <Icon.Tag size={14} /> Semana de ofertas · até 30% OFF
+              <Icon.Tag size={14} /> Semana de ofertas TESTE · até 30% OFF
             </span>
             <h1 style={{ fontSize: 'var(--text-5xl)', fontWeight: 'var(--font-extrabold)', color: '#fff', lineHeight: 1.08, letterSpacing: '-0.02em', marginBottom: 20 }}>
-              O marketplace que<span style={{ color: 'var(--color-primary-300)' }}> você merecia.</span>
+              O marketplace de estudos do IFES que<span style={{ color: 'var(--color-primary-300)' }}> você merece.</span>
             </h1>
             <p style={{ fontSize: 'var(--text-lg)', color: 'var(--color-primary-200)', lineHeight: 1.6, marginBottom: 28, maxWidth: '34rem' }}>
-              Milhares de produtos com entrega rápida, pagamento seguro e os melhores preços do Brasil. Tudo em um só lugar.
+              Vários produtos para TESTE com entrega rápida, pagamento seguro e os melhores preços do Brasil. Tudo em um só lugar!
             </p>
             <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap' }}>
               <Button variant="deal" size="lg" onClick={() => nav('catalog')}>Ver ofertas <Icon.ArrowRight size={18} /></Button>

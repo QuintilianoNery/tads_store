@@ -1,17 +1,23 @@
 // src/screens/Checkout.jsx — checkout em etapas: Entrega → Pagamento → Confirmação.
 // Rota protegida: o usuário está sempre logado. O endereço de entrega é
-// escolhido na agenda de endereços (AddressBook), que permite selecionar,
-// editar ou adicionar endereços vinculados ao cadastro.
+// escolhido na agenda de endereços (AddressBook). O pagamento é processado pelo
+// Mercado Pago (Checkout Pro): ao confirmar, criamos a preference no servidor e
+// redirecionamos o comprador. O pedido é registrado no retorno (/pedido-recebido).
 import React, { useState } from 'react';
-import { Button, Input } from '@/components/ds';
+import { useNavigate } from 'react-router-dom';
+import { Button } from '@/components/ds';
 import { Icon } from '@/components/Icon.jsx';
 import { AddressBook } from '@/components/AddressBook.jsx';
 import { useStore } from '@/context/StoreContext';
-import { orderNumber } from '@/services/orderService';
+import { createPreference } from '@/lib/mercadopago';
+import { setOrderPreference } from '@/services/orderService';
 import { fmtBRL, finalPrice } from '@/lib/format';
 
 const STEPS = ['Entrega', 'Pagamento', 'Confirmação'];
-const PAYMENT_LABELS = { card: 'Cartão de crédito', pix: 'Pix', boleto: 'Boleto bancário' };
+
+// Id do pedido pendente, guardado antes de abrir o Mercado Pago. A tela de
+// retorno (/pedido-recebido) usa para acompanhar a confirmação do pagamento.
+const PENDING_ORDER_ID_KEY = 'tads-pending-order-id';
 
 function Stepper({ step }) {
   return (
@@ -32,28 +38,6 @@ function Stepper({ step }) {
         );
       })}
     </div>
-  );
-}
-
-function FieldRow({ children, cols }) {
-  return <div style={{ display: 'grid', gridTemplateColumns: cols || '1fr', gap: 14 }}>{children}</div>;
-}
-
-function PayOption({ id, icon, title, subtitle, selected, onSelect }) {
-  return (
-    <button type="button" onClick={() => onSelect(id)}
-      style={{ display: 'flex', alignItems: 'center', gap: 12, textAlign: 'left', width: '100%', padding: '14px 16px', cursor: 'pointer', borderRadius: 'var(--radius-md)',
-        border: '2px solid ' + (selected ? 'var(--color-primary-700)' : 'var(--color-gray-200)'),
-        background: selected ? 'var(--color-primary-50)' : '#fff', transition: 'all var(--transition-fast)' }}>
-      <span style={{ color: selected ? 'var(--color-primary-700)' : 'var(--color-gray-500)' }}>{icon}</span>
-      <div style={{ flex: 1 }}>
-        <div style={{ fontSize: 'var(--text-sm)', fontWeight: 'var(--font-bold)', color: 'var(--color-gray-900)' }}>{title}</div>
-        <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-gray-500)' }}>{subtitle}</div>
-      </div>
-      <span style={{ width: 18, height: 18, borderRadius: 'var(--radius-full)', border: '2px solid ' + (selected ? 'var(--color-primary-700)' : 'var(--color-gray-300)'), display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        {selected && <span style={{ width: 8, height: 8, borderRadius: 'var(--radius-full)', background: 'var(--color-primary-700)' }} />}
-      </span>
-    </button>
   );
 }
 
@@ -83,24 +67,20 @@ function formatAddress(a) {
 }
 
 export default function Checkout() {
-  const { nav, cart, placeOrder, user } = useStore();
+  const { nav, cart, user, createPendingOrder } = useStore();
+  const navigate = useNavigate();
   const items = Object.values(cart || {});
 
   const [step, setStep] = useState(0);
   const [selectedAddress, setSelectedAddress] = useState(null);
   const [deliveryError, setDeliveryError] = useState('');
 
-  const [paymentMethod, setPaymentMethod] = useState('card');
-  const [placingOrder, setPlacingOrder] = useState(false);
-  const [finalizeError, setFinalizeError] = useState('');
-  // Pedido concluído (vindo do Supabase) — guarda o snapshot para a tela de
-  // sucesso, já que o carrinho é esvaziado ao finalizar.
-  const [confirmedOrder, setConfirmedOrder] = useState(null);
+  const [redirecting, setRedirecting] = useState(false);
+  const [payError, setPayError] = useState('');
 
   const subtotal = items.reduce((total, item) => total + finalPrice(item.product) * item.qty, 0);
   const shippingCost = items.length ? (subtotal > 300 ? 0 : 29.9) : 0;
-  const pixDiscount = paymentMethod === 'pix' ? +(subtotal * 0.05).toFixed(2) : 0;
-  const orderTotal = subtotal + shippingCost - pixDiscount;
+  const orderTotal = subtotal + shippingCost;
 
   // Avança para o pagamento exigindo um endereço de entrega selecionado.
   function handleContinueDelivery() {
@@ -111,50 +91,45 @@ export default function Checkout() {
 
   function goTo(n) { setStep(n); window.scrollTo(0, 0); }
 
-  // Registra o pedido (Supabase + atualização de estoque) e mostra a confirmação.
-  async function handleFinalize() {
-    setFinalizeError('');
-    setPlacingOrder(true);
+  // Cria o pedido (pendente) + a preference, abre o Mercado Pago em NOVA aba e
+  // deixa esta aba aguardando a confirmação. O pedido é confirmado pelo webhook
+  // (servidor) — à prova de fechar a aba do pagamento.
+  async function handlePay() {
+    setPayError('');
+    // Abre a aba de pagamento JÁ no clique (gesto do usuário); se abrirmos depois
+    // do await, o bloqueador de pop-up barra. Fica numa tela em branco até termos
+    // o init_point.
+    const payWindow = window.open('', '_blank');
+    setRedirecting(true);
     try {
-      const order = await placeOrder({ subtotal, total: orderTotal, paymentMethod, address: selectedAddress });
-      setConfirmedOrder(order);
-      window.scrollTo(0, 0);
-    } catch (err) {
-      console.error('Falha ao finalizar pedido:', err);
-      setFinalizeError('Não foi possível concluir o pedido. Tente novamente.');
-    } finally {
-      setPlacingOrder(false);
-    }
-  }
+      const order = await createPendingOrder({ subtotal, total: orderTotal, address: selectedAddress });
+      const payer = {
+        name: selectedAddress?.firstName,
+        surname: selectedAddress?.lastName,
+        email: user?.email || undefined,
+      };
+      const { initPoint, preferenceId } = await createPreference({
+        items, payer, externalReference: order.id, shipmentCost: shippingCost,
+      });
+      if (preferenceId) {
+        setOrderPreference(order.id, preferenceId).catch((err) => console.error('Falha ao vincular preference:', err));
+      }
+      sessionStorage.setItem(PENDING_ORDER_ID_KEY, order.id);
 
-  // ── Pedido confirmado ──────────────────────────────────────
-  if (confirmedOrder) {
-    return (
-      <div className="container" style={{ padding: '64px 0', maxWidth: 560, textAlign: 'center' }}>
-        <div style={{ width: 80, height: 80, borderRadius: 'var(--radius-full)', background: 'var(--color-success)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 22px', boxShadow: 'var(--shadow-lg)', animation: 'fadeIn 0.4s ease' }}>
-          <Icon.Check size={42} />
-        </div>
-        <h1 style={{ fontSize: 'var(--text-3xl)', color: 'var(--color-gray-900)', marginBottom: 10 }}>Pedido confirmado!</h1>
-        <p style={{ color: 'var(--color-gray-500)', marginBottom: 24 }}>Obrigado pela compra. Enviamos a confirmação por e-mail e você pode acompanhar o rastreio a qualquer momento.</p>
-        <div style={{ background: '#fff', border: '1px solid var(--color-gray-100)', borderRadius: 'var(--radius-lg)', padding: 24, boxShadow: 'var(--shadow-sm)', textAlign: 'left', marginBottom: 28 }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: 12, marginBottom: 12, borderBottom: '1px solid var(--color-gray-100)' }}>
-            <span style={{ color: 'var(--color-gray-500)', fontSize: 'var(--text-sm)' }}>Número do pedido</span>
-            <strong style={{ fontFamily: 'var(--font-display)', color: 'var(--color-gray-900)' }}>{orderNumber(confirmedOrder)}</strong>
-          </div>
-          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
-            <span style={{ color: 'var(--color-gray-500)', fontSize: 'var(--text-sm)' }}>Total pago</span>
-            <strong style={{ fontFamily: 'var(--font-display)', color: 'var(--color-gray-900)' }}>{fmtBRL(confirmedOrder.total)}</strong>
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: 'var(--color-success)', fontSize: 'var(--text-sm)', fontWeight: 'var(--font-semibold)' }}>
-            <Icon.Truck size={16} /> Entrega estimada: 3 dias úteis
-          </div>
-        </div>
-        <div style={{ display: 'flex', gap: 12, justifyContent: 'center' }}>
-          <Button variant="secondary" size="lg" onClick={() => nav('account')}>Ver meus pedidos</Button>
-          <Button variant="primary" size="lg" onClick={() => nav('catalog')}>Voltar para a loja</Button>
-        </div>
-      </div>
-    );
+      if (payWindow) {
+        payWindow.location.href = initPoint;             // paga na nova aba
+        navigate(`/pedido-recebido?order=${order.id}`);  // esta aba acompanha
+      } else {
+        // Pop-up bloqueado: cai no fluxo de mesma aba (redirect).
+        window.location.href = initPoint;
+      }
+    } catch (err) {
+      console.error('Falha ao iniciar pagamento:', err);
+      if (payWindow) payWindow.close();
+      sessionStorage.removeItem(PENDING_ORDER_ID_KEY);
+      setPayError('Não foi possível iniciar o pagamento. Tente novamente.');
+      setRedirecting(false);
+    }
   }
 
   // ── Carrinho vazio ─────────────────────────────────────────
@@ -208,28 +183,14 @@ export default function Checkout() {
           {/* ── ETAPA 1: PAGAMENTO ── */}
           {step === 1 && (
             <Panel title="Forma de pagamento">
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                <PayOption id="card" icon={<Icon.CreditCard size={22} />} title="Cartão de crédito" subtitle="Em até 12x sem juros" selected={paymentMethod === 'card'} onSelect={setPaymentMethod} />
-                <PayOption id="pix" icon={<Icon.Zap size={22} />} title="Pix" subtitle="5% de desconto · aprovação imediata" selected={paymentMethod === 'pix'} onSelect={setPaymentMethod} />
-                <PayOption id="boleto" icon={<Icon.Tag size={22} />} title="Boleto bancário" subtitle="Vence em 3 dias úteis" selected={paymentMethod === 'boleto'} onSelect={setPaymentMethod} />
-              </div>
-              {paymentMethod === 'card' && (
-                <div style={{ marginTop: 16, display: 'flex', flexDirection: 'column', gap: 14 }}>
-                  <Input label="Número do cartão" placeholder="0000 0000 0000 0000" />
-                  <FieldRow cols="1fr 1fr 1fr">
-                    <Input label="Validade" placeholder="MM/AA" />
-                    <Input label="CVV" placeholder="000" />
-                    <Input label="Parcelas" placeholder="12x" />
-                  </FieldRow>
+              <div style={{ display: 'flex', alignItems: 'flex-start', gap: 14, padding: 16, borderRadius: 'var(--radius-md)', border: '2px solid var(--color-primary-700)', background: 'var(--color-primary-50)' }}>
+                <span style={{ color: 'var(--color-primary-700)', flexShrink: 0, marginTop: 2 }}><Icon.Lock size={22} /></span>
+                <div>
+                  <div style={{ fontSize: 'var(--text-sm)', fontWeight: 'var(--font-bold)', color: 'var(--color-gray-900)' }}>Mercado Pago</div>
+                  <p style={{ fontSize: 'var(--text-sm)', color: 'var(--color-gray-600)', marginTop: 4 }}>
+                    Você será redirecionado para o ambiente seguro do Mercado Pago para concluir o pagamento com <strong>cartão de crédito, Pix ou boleto</strong>. Nenhum dado de cartão é digitado ou armazenado nesta loja.
+                  </p>
                 </div>
-              )}
-              {paymentMethod === 'pix' && (
-                <p style={{ marginTop: 14, fontSize: 'var(--text-sm)', color: 'var(--color-deal-text)', background: 'var(--color-deal-soft)', border: '1px solid #fde68a', borderRadius: 'var(--radius-md)', padding: '12px 14px' }}>
-                  Você ganha <strong>5% de desconto</strong> pagando com Pix. O código será gerado na confirmação.
-                </p>
-              )}
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 16, fontSize: 'var(--text-xs)', color: 'var(--color-gray-500)' }}>
-                <Icon.Lock size={14} /> Pagamento processado com segurança via <strong style={{ color: 'var(--color-gray-700)' }}>Mercado Pago</strong>.
               </div>
               <div style={{ display: 'flex', gap: 12, marginTop: 20 }}>
                 <Button variant="ghost" size="lg" onClick={() => goTo(0)}><Icon.ChevronLeft size={18} /> Voltar</Button>
@@ -252,11 +213,8 @@ export default function Checkout() {
                 </div>
                 <div style={{ borderTop: '1px solid var(--color-gray-100)' }} />
                 <div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
-                    <h3 style={{ fontSize: 'var(--text-sm)', fontWeight: 'var(--font-bold)', color: 'var(--color-gray-700)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Pagamento</h3>
-                    <button type="button" onClick={() => goTo(1)} style={{ color: 'var(--color-accent)', background: 'none', border: 'none', cursor: 'pointer', fontSize: 'var(--text-xs)', fontWeight: 'var(--font-bold)' }}>Editar</button>
-                  </div>
-                  <p style={{ fontSize: 'var(--text-sm)', color: 'var(--color-gray-800)' }}>{PAYMENT_LABELS[paymentMethod]}</p>
+                  <h3 style={{ fontSize: 'var(--text-sm)', fontWeight: 'var(--font-bold)', color: 'var(--color-gray-700)', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 6 }}>Pagamento</h3>
+                  <p style={{ fontSize: 'var(--text-sm)', color: 'var(--color-gray-800)' }}>Mercado Pago — cartão, Pix ou boleto</p>
                 </div>
                 <div style={{ borderTop: '1px solid var(--color-gray-100)' }} />
                 <div>
@@ -272,14 +230,14 @@ export default function Checkout() {
                   </div>
                 </div>
               </div>
-              {finalizeError && (
+              {payError && (
                 <div role="alert" aria-live="assertive" style={{ display: 'flex', alignItems: 'center', gap: 8, background: '#fee2e2', color: '#b91c1c', padding: '10px 14px', borderRadius: 'var(--radius-md)', fontSize: 'var(--text-sm)', marginTop: 18 }}>
-                  <Icon.AlertCircle size={18} /> <span>{finalizeError}</span>
+                  <Icon.AlertCircle size={18} /> <span>{payError}</span>
                 </div>
               )}
               <div style={{ display: 'flex', gap: 12, marginTop: 22 }}>
-                <Button variant="ghost" size="lg" disabled={placingOrder} onClick={() => goTo(1)}><Icon.ChevronLeft size={18} /> Voltar</Button>
-                <Button variant="deal" size="lg" fullWidth disabled={placingOrder} onClick={handleFinalize}><Icon.Lock size={18} /> {placingOrder ? 'Processando...' : 'Finalizar compra'}</Button>
+                <Button variant="ghost" size="lg" disabled={redirecting} onClick={() => goTo(1)}><Icon.ChevronLeft size={18} /> Voltar</Button>
+                <Button variant="deal" size="lg" fullWidth disabled={redirecting} onClick={handlePay}><Icon.Lock size={18} /> {redirecting ? 'Redirecionando...' : 'Pagar com Mercado Pago'}</Button>
               </div>
             </Panel>
           )}
@@ -307,7 +265,6 @@ export default function Checkout() {
             <div style={{ borderTop: '1px solid var(--color-gray-100)', paddingTop: 14, display: 'flex', flexDirection: 'column', gap: 6 }}>
               <SumRow label="Subtotal" value={fmtBRL(subtotal)} />
               <SumRow label="Frete" value={shippingCost === 0 ? 'Grátis' : fmtBRL(shippingCost)} highlight={shippingCost === 0} />
-              {pixDiscount > 0 && <SumRow label="Desconto Pix (5%)" value={'- ' + fmtBRL(pixDiscount)} highlight />}
               <div style={{ borderTop: '1px solid var(--color-gray-200)', margin: '8px 0' }} />
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
                 <span style={{ fontSize: 'var(--text-base)', fontWeight: 'var(--font-bold)', color: 'var(--color-gray-900)' }}>Total</span>

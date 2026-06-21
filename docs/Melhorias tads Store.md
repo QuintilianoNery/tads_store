@@ -148,3 +148,7 @@ Veja se tem como atualizar o estoque do produto comprado, para que o estoque fiq
 
 # 19 - implementar e salvar no cadastro do banco de dados do usuário
 - no lugar dentro do cadastro da minha conta, mostra o nome do usuário e Cliente desde 2024, deve pegar o ano real de quando ele se cadastrou.  
+
+# Inserir a logo do mercado pago no rodapé
+# conferir se credencial RLS é esta mesmo que peguei no superbase
+# informar no readme sobre o como rodar a cação local, instalar a vercel e rodar vercel dev na porta 3000

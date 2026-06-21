@@ -93,6 +93,26 @@ export default function Footer() {
         </div>
       </div>
 
+      {/* Pagamento seguro — Mercado Pago */}
+      <div style={{ borderTop: '1px solid var(--color-primary-700)' }}>
+        <div className="container" style={{ padding: '20px 0', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10 }}>
+          <span style={{ fontSize: 'var(--text-xs)', color: 'var(--color-primary-300)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Pagamento seguro</span>
+          <a
+            href="https://www.mercadopago.com.br"
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label="Pagamento seguro via Mercado Pago"
+            style={{ display: 'inline-flex', background: '#fff', padding: '8px 16px', borderRadius: 'var(--radius-md)' }}
+          >
+            <img
+              src="https://http2.mlstatic.com/frontend-assets/ui-navigation/5.10.4/mercadopago/logo__large.png"
+              alt="Mercado Pago"
+              style={{ height: 28, width: 'auto', display: 'block' }}
+            />
+          </a>
+        </div>
+      </div>
+
       <div style={{ borderTop: '1px solid var(--color-primary-700)' }}>
         <div className="container" style={{ padding: '18px 0', textAlign: 'center' }}>
           <p style={{ fontSize: 'var(--text-xs)', color: 'var(--color-primary-300)' }}>

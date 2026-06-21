@@ -21,15 +21,17 @@ real com **Supabase** (auth + dados) e catálogo da **API DummyJSON**.
 - **App ativo = `src/screens/` + `src/context/StoreContext.jsx`** (ver
   `src/App.jsx`). O design system fica em `src/components/ds/`.
 - **Estoque não persiste na DummyJSON**: ela aceita `PUT` e finge sucesso,
-  mas não grava. A baixa real é **derivada dos pedidos** (Supabase): o estoque
-  exibido = base da DummyJSON − soma do que o usuário comprou
-  (`getStockConsumption`). Ver `StoreContext` (`baseStockRef`, `placeOrder`).
+  mas não grava. A baixa real é **derivada dos pedidos pagos** (Supabase): o
+  estoque exibido = base da DummyJSON − soma do que o usuário comprou
+  (`getStockConsumption`, só `status='pago'`). Ver `StoreContext`
+  (`baseStockRef`, `reloadStock`).
 
 ## Estrutura (pontos de entrada)
 
 - `src/App.jsx` — rotas. Rotas protegidas via `src/components/RotaProtegida`.
 - `src/context/StoreContext.jsx` — **estado global**: catálogo, carrinho,
-  favoritos, usuário/sessão, busca, navegação (`nav`), `placeOrder`. Hub central.
+  favoritos, usuário/sessão, busca, navegação (`nav`), `createPendingOrder`,
+  `reloadStock`. Hub central.
 - `src/screens/` — telas: Home, Catalog, Detail, Cart, Checkout, Login,
   Account, Wishlist, Help (Central de Ajuda/FAQ).
 - `src/components/ds/` — design system (Button, Input, Badge, Spinner,
@@ -39,14 +41,38 @@ real com **Supabase** (auth + dados) e catálogo da **API DummyJSON**.
 - `src/services/` — acesso a dados: `supabase.js` (cliente), `authService`,
   `productService` (DummyJSON), `favoritesService`, `cartService`,
   `addressService`, `orderService`, `reviewService` (avaliações).
-- `src/lib/` — puros: `format.js` (`fmtBRL`, `finalPrice`), `orderNumber.js`.
+- `src/lib/` — `format.js` (`fmtBRL`, `finalPrice`), `orderNumber.js` (puros) e
+  `mercadopago.js` (helper do Checkout Pro — monta o payload e chama `/api`).
 - `src/utils/` — `validators.js`, `masks.js` (CPF/CNPJ, telefone, CEP, e-mail).
+- `api/` — funções **serverless da Vercel** (Node): `create-preference.js` (cria
+  a preference) e `mp-webhook.js` (confirma o pagamento). Segredos só aqui no
+  servidor; `api/_lib/` é código compartilhado (não vira rota). Em dev, rode
+  `vercel dev` (3000) junto do Vite — o `vite.config.js` faz proxy de `/api`.
 
 ## Navegação
 
 `nav(name, id?)` no `StoreContext` mapeia nomes → rotas via `ROUTE_PATH`.
 Chaves válidas: `home, catalog, detail, cart, checkout, login, wishlist,
 account, help`. Chave inexistente cai em `/` (home) — atenção a typos.
+(A rota `/pedido-recebido` é alcançada por navegação direta/back_url, não por `nav`.)
+
+## Pagamento (Mercado Pago — Checkout Pro)
+
+Fluxo final (ver `docs/progresso/007`). Por que servidor: o Access Token é
+segredo e **não** pode ir pro frontend.
+
+- **Início (Checkout):** cria o pedido `pendente` (`createPendingOrder`), gera a
+  preference via `api/create-preference.js` (helper `src/lib/mercadopago.js`) e
+  abre o Checkout Pro em **nova aba**; a aba original vai pra `/pedido-recebido`
+  e acompanha o pedido por **polling**.
+- **Confirmação server-side:** `api/mp-webhook.js` valida a assinatura
+  (`x-signature`) e grava `status='pago'` via **service role** — à prova de
+  fechar a aba. Em DEV há fallback no cliente (`?status=approved`), desligado em
+  produção.
+- `back_urls`/`notification_url` exigem **https público** → só funcionam 100%
+  no deploy da Vercel (o MP não alcança `localhost`).
+- Segredos de servidor (sem `VITE_`): `MP_ACCESS_TOKEN`, `MP_WEBHOOK_SECRET`,
+  `SUPABASE_SERVICE_ROLE_KEY`. Público no frontend: `VITE_MP_PUBLIC_KEY`.
 
 ## Supabase
 

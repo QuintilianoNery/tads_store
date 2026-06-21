@@ -6,7 +6,7 @@ import { makeQuery } from '../helpers/supabaseMock';
 const { from } = vi.hoisted(() => ({ from: vi.fn() }));
 vi.mock('@/services/supabase', () => ({ supabase: { from }, default: { from } }));
 
-import { createOrder, getOrders, getStockConsumption } from '@/services/orderService';
+import { createOrder, getOrders, getStockConsumption, setOrderPreference, getOrderById, markOrderPaid } from '@/services/orderService';
 
 beforeEach(() => { from.mockReset(); });
 
@@ -37,18 +37,71 @@ describe('createOrder', () => {
   });
 });
 
+describe('createOrder (Mercado Pago)', () => {
+  it('cria pedido pendente com a preference', async () => {
+    const orderQuery = makeQuery({ data: { id: 'oid' }, error: null });
+    const itemsQuery = makeQuery({ data: [{ id: 'it1' }], error: null });
+    from.mockReturnValueOnce(orderQuery).mockReturnValueOnce(itemsQuery);
+
+    const items = [{ product: { id: 1, title: 'A', thumbnail: 't', price: 100 }, qty: 1 }];
+    await createOrder({ userId: 'u', items, subtotal: 100, total: 100, paymentMethod: 'mercadopago', address: null, status: 'pendente', mpPreferenceId: 'pref_1' });
+
+    expect(orderQuery.insert).toHaveBeenCalledWith(expect.objectContaining({
+      status: 'pendente', payment_method: 'mercadopago', mp_preference_id: 'pref_1',
+    }));
+  });
+});
+
+describe('setOrderPreference', () => {
+  it('vincula a preference ao pedido', async () => {
+    const q = makeQuery({ data: null, error: null });
+    from.mockReturnValueOnce(q);
+
+    await setOrderPreference('oid', 'pref_9');
+
+    expect(from).toHaveBeenCalledWith('orders');
+    expect(q.update).toHaveBeenCalledWith({ mp_preference_id: 'pref_9' });
+    expect(q.eq).toHaveBeenCalledWith('id', 'oid');
+  });
+});
+
+describe('getOrderById', () => {
+  it('busca um pedido por id com seus itens', async () => {
+    const order = { id: 'oid', total: 50, order_items: [] };
+    from.mockReturnValueOnce(makeQuery({ data: order, error: null }));
+
+    expect(await getOrderById('oid')).toEqual(order);
+  });
+});
+
+describe('markOrderPaid', () => {
+  it('marca como pago somente se ainda estiver pendente', async () => {
+    const q = makeQuery({ data: { id: 'oid', status: 'pago' }, error: null });
+    from.mockReturnValueOnce(q);
+
+    const result = await markOrderPaid('oid');
+
+    expect(q.update).toHaveBeenCalledWith({ status: 'pago' });
+    expect(q.eq).toHaveBeenCalledWith('id', 'oid');
+    expect(q.eq).toHaveBeenCalledWith('status', 'pendente');
+    expect(result).toEqual({ id: 'oid', status: 'pago' });
+  });
+});
+
 describe('getStockConsumption', () => {
-  it('soma as quantidades compradas por produto', async () => {
-    from.mockReturnValue(makeQuery({
+  it('soma as quantidades compradas por produto (só pedidos pagos)', async () => {
+    const q = makeQuery({
       data: [
         { product_id: 1, quantity: 2 },
         { product_id: 1, quantity: 3 },
         { product_id: 2, quantity: 1 },
       ],
       error: null,
-    }));
+    });
+    from.mockReturnValue(q);
 
     expect(await getStockConsumption('user-1')).toEqual({ 1: 5, 2: 1 });
+    expect(q.eq).toHaveBeenCalledWith('orders.status', 'pago');
   });
 
   it('retorna objeto vazio sem pedidos', async () => {

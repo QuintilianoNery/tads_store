@@ -24,9 +24,9 @@ Nasceu como protótipo offline e evoluiu para uma versão real:
 - **Validação e máscaras** de formulário (CPF/CNPJ, telefone, CEP, e-mail).
 
 > ⚠️ **Estoque**: a DummyJSON não persiste alterações de estoque (aceita `PUT` e
-> finge sucesso). A baixa real é **derivada dos pedidos** no Supabase: o estoque
-> exibido = base da DummyJSON − soma do que o usuário comprou. Ver
-> `getStockConsumption` / `placeOrder` em
+> finge sucesso). A baixa real é **derivada dos pedidos pagos** no Supabase: o
+> estoque exibido = base da DummyJSON − soma do que o usuário comprou. Ver
+> `getStockConsumption` / `reloadStock` em
 > [`src/context/StoreContext.jsx`](src/context/StoreContext.jsx).
 
 ## Stack
@@ -78,6 +78,58 @@ npm run dev        # app em http://localhost:5173
 npm run build      # build de produção (pasta dist/)
 npm run preview    # serve o build de produção
 ```
+
+### Rodando com o pagamento local (funções serverless)
+
+O checkout chama funções em `api/` (ex.: `api/create-preference.js`), que o Vite
+(`npm run dev`) **não** executa. Para testá-las localmente, rode o **`vercel dev`**
+em paralelo, em **dois terminais**:
+
+```bash
+# Terminal 1 — funções /api na porta 3000 (lê o .env)
+npm i -g vercel    # instala a CLI da Vercel (apenas na 1ª vez)
+vercel link        # vincula a pasta ao projeto da Vercel (apenas na 1ª vez)
+vercel dev         # sobe as funções em http://localhost:3000
+```
+
+```bash
+# Terminal 2 — a aplicação (Vite)
+npm run dev        # app em http://localhost:5173
+```
+
+Use a loja em **<http://localhost:5173>**: o [`vite.config.js`](vite.config.js)
+faz proxy de `/api` para o `vercel dev` (3000). Sem o `vercel dev` rodando, o
+botão "Pagar com Mercado Pago" falha (a rota `/api` não existe no Vite).
+
+> A confirmação por **webhook** exige URL pública (https) — só funciona no deploy
+> da Vercel, não em `localhost`. Detalhes em
+> [`docs/progresso/007_mercadopago_vercel.md`](docs/progresso/007_mercadopago_vercel.md).
+
+## Pagamento (Mercado Pago — Checkout Pro)
+
+### Pagar em ambiente de teste
+
+Use **sempre credenciais de teste** (`APP_USR-`) disponíveis dentro do painel do desenvolvedor do Mercado Pago, em Credenciais Teste, realize o login com a conta Mercado Pago usando a credencial de **comprador de teste** — nunca com a conta de vendedor, senão o
+Mercado Pago recusa com *"uma das partes é de teste"*, e nem com uma conta real.
+
+**Conta de comprador de teste:**
+
+| Campo | Valor |
+| --- | --- |
+| Usuário (no lugar do e-mail) | `TESTUSER1607170486577907987` |
+| Senha | `y6DsZcc89x` |
+
+O comprador pode pagar com o **saldo em conta** ou com um **cartão de teste**:
+
+| Cartão | Número | CVV | Validade |
+| --- | --- | --- | --- |
+| Mastercard | `5031 4332 1540 6351` | `123` | `11/30` |
+| Visa | `4235 6477 2802 5682` | `123` | `11/30` |
+| American Express | `3753 651535 56885` | `1234` | `11/30` |
+| Elo (débito) | `5067 7667 8388 8311` | `123` | `11/30` |
+
+Para **aprovar** o pagamento, preencha o **titular do cartão** com `APRO` e o
+documento **CPF `12345678909`**. Ou use os cartões já cadastrados, para não ter a compra teste recusada 
 
 ## Scripts disponíveis
 
