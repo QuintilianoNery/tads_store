@@ -105,7 +105,19 @@ export async function createPreference({ items, payer, externalReference, shipme
     );
   }
 
-  const data = await response.json();
+  let data;
+  try {
+    data = await response.json();
+  } catch {
+    // Resposta 200 mas não-JSON (tipicamente o index.html do SPA): a função
+    // /api não está sendo servida. Em dev isso acontece ao abrir o app na
+    // porta do Vite (5173) em vez da do `vercel dev` (3000).
+    throw new Error(
+      'Resposta inválida do servidor de pagamento (esperava JSON). ' +
+      'Em desenvolvimento, abra o app em http://localhost:3000 com `vercel dev` — ' +
+      'a porta 5173 (Vite) não executa as funções em /api.'
+    );
+  }
   const initPoint = data.init_point || data.sandbox_init_point;
   if (!initPoint) {
     throw new Error('A resposta não trouxe um init_point válido.');

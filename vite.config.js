@@ -93,6 +93,14 @@ export default defineConfig(async () => ({
   define: {
     __APP_VERSION__: JSON.stringify(await resolveAppVersion()),
   },
+  // Em dev, o app roda no Vite (5173, onde o .env é lido normalmente) e as
+  // chamadas a /api são encaminhadas para o `vercel dev` (3000), que executa as
+  // funções serverless. Em produção a Vercel serve /api nativamente (sem proxy).
+  server: {
+    proxy: {
+      '/api': 'http://localhost:3000',
+    },
+  },
   resolve: {
     alias: {
       '@': resolve(__dirname, './src'),
