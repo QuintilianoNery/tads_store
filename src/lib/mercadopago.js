@@ -56,6 +56,17 @@ function buildBackUrls() {
 }
 
 /**
+ * URL do webhook que o Mercado Pago chama quando o pagamento muda de estado.
+ * Exige domínio público (https) — em localhost o MP não alcança, então
+ * devolvemos undefined (a confirmação automática só roda no deploy).
+ */
+function buildNotificationUrl() {
+  const { origin, hostname } = window.location;
+  if (hostname === 'localhost' || hostname === '127.0.0.1') return undefined;
+  return `${origin}/api/mp-webhook`;
+}
+
+/**
  * Cria uma preference de pagamento no Mercado Pago (via função serverless)
  * e retorna a URL de checkout (`init_point`) para redirecionar o comprador.
  *
@@ -75,6 +86,7 @@ export async function createPreference({ items, payer, externalReference, shipme
     items: mapItemsToMercadoPago(items),
     payer,
     back_urls: buildBackUrls(),
+    notification_url: buildNotificationUrl(),
     external_reference: String(externalReference),
   };
 

@@ -52,10 +52,12 @@ describe('createPreference', () => {
 
     await createPreference({ items: cart, externalReference: 1 });
 
-    expect(sentBody().back_urls).toBeUndefined();
+    const body = sentBody();
+    expect(body.back_urls).toBeUndefined();
+    expect(body.notification_url).toBeUndefined();
   });
 
-  it('inclui back_urls (mesma página) e frete em domínio https', async () => {
+  it('inclui back_urls (mesma página), notification_url e frete em domínio https', async () => {
     stubWindow('loja.vercel.app', 'https://loja.vercel.app');
     fetch.mockResolvedValue(okResponse({ id: 'p', init_point: 'https://mp' }));
 
@@ -64,6 +66,7 @@ describe('createPreference', () => {
     const body = sentBody();
     const retorno = 'https://loja.vercel.app/pedido-recebido';
     expect(body.back_urls).toEqual({ success: retorno, failure: retorno, pending: retorno });
+    expect(body.notification_url).toBe('https://loja.vercel.app/api/mp-webhook');
     expect(body.shipments).toEqual({ cost: 29.9, mode: 'not_specified' });
   });
 

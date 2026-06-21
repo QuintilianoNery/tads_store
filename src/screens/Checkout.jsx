@@ -4,18 +4,20 @@
 // Mercado Pago (Checkout Pro): ao confirmar, criamos a preference no servidor e
 // redirecionamos o comprador. O pedido é registrado no retorno (/pedido-recebido).
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ds';
 import { Icon } from '@/components/Icon.jsx';
 import { AddressBook } from '@/components/AddressBook.jsx';
 import { useStore } from '@/context/StoreContext';
 import { createPreference } from '@/lib/mercadopago';
+import { setOrderPreference } from '@/services/orderService';
 import { fmtBRL, finalPrice } from '@/lib/format';
 
 const STEPS = ['Entrega', 'Pagamento', 'Confirmação'];
 
-// Snapshot do pedido guardado antes do redirect ao Mercado Pago. A página de
-// retorno (/pedido-recebido) lê esta chave para registrar o pedido na volta.
-const PENDING_ORDER_KEY = 'tads-pending-order';
+// Id do pedido pendente, guardado antes de abrir o Mercado Pago. A tela de
+// retorno (/pedido-recebido) usa para acompanhar a confirmação do pagamento.
+const PENDING_ORDER_ID_KEY = 'tads-pending-order-id';
 
 function Stepper({ step }) {
   return (
@@ -65,7 +67,8 @@ function formatAddress(a) {
 }
 
 export default function Checkout() {
-  const { nav, cart, user } = useStore();
+  const { nav, cart, user, createPendingOrder } = useStore();
+  const navigate = useNavigate();
   const items = Object.values(cart || {});
 
   const [step, setStep] = useState(0);
@@ -88,32 +91,42 @@ export default function Checkout() {
 
   function goTo(n) { setStep(n); window.scrollTo(0, 0); }
 
-  // Cria a preference no Mercado Pago e redireciona o comprador ao Checkout Pro.
-  // O pedido só é registrado no retorno (/pedido-recebido), a partir do snapshot.
+  // Cria o pedido (pendente) + a preference, abre o Mercado Pago em NOVA aba e
+  // deixa esta aba aguardando a confirmação. O pedido é confirmado pelo webhook
+  // (servidor) — à prova de fechar a aba do pagamento.
   async function handlePay() {
     setPayError('');
+    // Abre a aba de pagamento JÁ no clique (gesto do usuário); se abrirmos depois
+    // do await, o bloqueador de pop-up barra. Fica numa tela em branco até termos
+    // o init_point.
+    const payWindow = window.open('', '_blank');
     setRedirecting(true);
     try {
-      const externalReference = `TADS-${Date.now()}`;
+      const order = await createPendingOrder({ subtotal, total: orderTotal, address: selectedAddress });
       const payer = {
         name: selectedAddress?.firstName,
         surname: selectedAddress?.lastName,
         email: user?.email || undefined,
       };
-      const snapshot = {
-        items: items.map(({ product, qty }) => ({ product, qty })),
-        subtotal,
-        total: orderTotal,
-        address: selectedAddress,
-        externalReference,
-      };
-      sessionStorage.setItem(PENDING_ORDER_KEY, JSON.stringify(snapshot));
+      const { initPoint, preferenceId } = await createPreference({
+        items, payer, externalReference: order.id, shipmentCost: shippingCost,
+      });
+      if (preferenceId) {
+        setOrderPreference(order.id, preferenceId).catch((err) => console.error('Falha ao vincular preference:', err));
+      }
+      sessionStorage.setItem(PENDING_ORDER_ID_KEY, order.id);
 
-      const { initPoint } = await createPreference({ items, payer, externalReference, shipmentCost: shippingCost });
-      window.location.href = initPoint; // sai do app para o Checkout Pro
+      if (payWindow) {
+        payWindow.location.href = initPoint;             // paga na nova aba
+        navigate(`/pedido-recebido?order=${order.id}`);  // esta aba acompanha
+      } else {
+        // Pop-up bloqueado: cai no fluxo de mesma aba (redirect).
+        window.location.href = initPoint;
+      }
     } catch (err) {
       console.error('Falha ao iniciar pagamento:', err);
-      sessionStorage.removeItem(PENDING_ORDER_KEY);
+      if (payWindow) payWindow.close();
+      sessionStorage.removeItem(PENDING_ORDER_ID_KEY);
       setPayError('Não foi possível iniciar o pagamento. Tente novamente.');
       setRedirecting(false);
     }
