@@ -1,15 +1,18 @@
 // src/screens/PedidoRecebido.jsx — retorno do Checkout Pro (Mercado Pago).
-// Esta aba acompanha o pedido (criado como 'pendente' no checkout) por polling
-// até ele ser confirmado. A confirmação canônica vem do **webhook** (servidor,
-// api/mp-webhook.js) — por isso funciona mesmo que a aba de pagamento seja
-// fechada. O status do MP na query (?status=) é só uma dica de UX.
+// O Mercado Pago redireciona para cá (mesma aba) com o resultado na query:
+//   ?status=approved&external_reference=<id_do_pedido>&payment_id=...
+// Confirmamos o pedido no retorno:
+//   - approved  → marca o pedido como 'pago' e mostra o sucesso;
+//   - pending   → mantém 'pendente' (Pix/boleto) e orienta;
+//   - rejected/failure → mostra falha (carrinho preservado).
 //
-// O id do pedido vem em ?order= (nova aba) ou do sessionStorage (fallback de
-// mesma aba, quando o pop-up é bloqueado).
+// O webhook (api/mp-webhook.js) também confirma no servidor — é o reforço para
+// quando o cliente fecha a aba antes de voltar. `markOrderPaid` é idempotente
+// (só pendente → pago), então não há conflito entre os dois caminhos.
 //
-// Em DEV (localhost) o webhook não é alcançável pelo MP; então, se a URL trouxer
-// status=approved, confirmamos o pedido no cliente apenas para testar o fluxo.
-// Em produção isso fica desligado (a autoridade é o webhook).
+// Observação (escopo de estudo): a confirmação no cliente confia no `status` da
+// URL de retorno. Em uma loja real, a fonte de verdade deve ser o webhook
+// (assinado). Aqui mantemos os dois para o fluxo ser confiável na demonstração.
 import { useEffect, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { Button, Spinner } from '@/components/ds';
@@ -20,8 +23,6 @@ import { orderNumber } from '@/lib/orderNumber';
 import { fmtBRL } from '@/lib/format';
 
 const PENDING_ORDER_ID_KEY = 'tads-pending-order-id';
-const POLL_INTERVAL_MS = 3000;
-const POLL_TIMEOUT_MS = 3 * 60 * 1000;
 
 function Hero({ color, icon, title, subtitle }) {
   return (
@@ -36,6 +37,7 @@ function Hero({ color, icon, title, subtitle }) {
 }
 
 function OrderCard({ order, footer }) {
+  if (!order) return null;
   return (
     <div style={{ background: '#fff', border: '1px solid var(--color-gray-100)', borderRadius: 'var(--radius-lg)', padding: 24, boxShadow: 'var(--shadow-sm)', textAlign: 'left', marginBottom: 28 }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: 12, marginBottom: 12, borderBottom: '1px solid var(--color-gray-100)' }}>
@@ -58,80 +60,68 @@ function Wrapper({ children }) {
 export default function PedidoRecebido() {
   const { nav, clearCart, reloadStock, authInitializing } = useStore();
   const [params] = useSearchParams();
-  const orderId = params.get('order') || (typeof window !== 'undefined' && sessionStorage.getItem(PENDING_ORDER_ID_KEY)) || null;
-  const mpStatus = params.get('status') || params.get('collection_status');
+  // O Mercado Pago devolve o id do pedido em external_reference; mantemos ?order=
+  // e o sessionStorage como fallback (ex.: mesma aba sem o parâmetro).
+  const orderId = params.get('external_reference') || params.get('order')
+    || (typeof window !== 'undefined' && sessionStorage.getItem(PENDING_ORDER_ID_KEY)) || null;
+  const status = params.get('status') || params.get('collection_status');
 
-  const [view, setView] = useState('waiting'); // waiting | success | pending | failure | error
+  const [view, setView] = useState('processing'); // processing | success | pending | failure | error
   const [order, setOrder] = useState(null);
   const doneRef = useRef(false);
 
   useEffect(() => {
-    if (authInitializing) return undefined;
+    if (authInitializing) return;
+    if (doneRef.current) return;
+    doneRef.current = true;
 
-    const isFailureHint = mpStatus === 'failure' || mpStatus === 'rejected' || mpStatus === 'cancelled';
+    const isApproved = status === 'approved' || status === 'success';
+    const isPending = status === 'pending' || status === 'in_process';
 
     if (!orderId) {
-      setView(isFailureHint ? 'failure' : 'error');
-      return undefined;
+      setView(isApproved ? 'success' : isPending ? 'pending' : 'failure');
+      return;
     }
 
-    let active = true;
-    let timer;
-    const startedAt = Date.now();
-
-    const finish = (nextView, paidOrder) => {
-      if (doneRef.current) return;
-      doneRef.current = true;
-      sessionStorage.removeItem(PENDING_ORDER_ID_KEY);
-      if (nextView === 'success') {
-        setOrder(paidOrder);
-        clearCart();
-        reloadStock();
-      }
-      setView(nextView);
-    };
-
-    const poll = async () => {
-      if (!active) return;
+    (async () => {
       try {
-        let current = await getOrderById(orderId);
-
-        // Fallback de DEV (localhost): o MP não alcança o webhook, então, se a
-        // URL trouxe status=approved, confirmamos o pedido no cliente p/ testar.
-        if (import.meta.env.DEV && mpStatus === 'approved' && current.status === 'pendente') {
-          const paid = await markOrderPaid(orderId);
-          if (paid) current = paid;
+        // Falha/recusa: não confirma, mantém o carrinho.
+        if (!isApproved && !isPending) {
+          sessionStorage.removeItem(PENDING_ORDER_ID_KEY);
+          setView('failure');
+          return;
         }
 
-        if (!active) return;
+        let current = await getOrderById(orderId);
 
-        if (current.status === 'pago') { finish('success', current); return; }
-        if (current.status === 'cancelado') { finish('failure', null); return; }
-
-        // Ainda pendente
-        if (isFailureHint) { finish('failure', null); return; }
-        if (Date.now() - startedAt > POLL_TIMEOUT_MS) { setView('pending'); return; }
-        setView('waiting');
-        timer = setTimeout(poll, POLL_INTERVAL_MS);
+        if (isApproved) {
+          if (current.status === 'pendente') {
+            await markOrderPaid(orderId).catch((e) => console.error('markOrderPaid:', e));
+            current = await getOrderById(orderId);
+          }
+          setOrder(current);
+          clearCart();
+          reloadStock();
+          sessionStorage.removeItem(PENDING_ORDER_ID_KEY);
+          setView('success');
+        } else {
+          // pendente (Pix/boleto): aguarda a confirmação real (webhook).
+          setOrder(current);
+          setView('pending');
+        }
       } catch (err) {
-        console.error('Falha ao consultar o pedido:', err);
-        if (active) setView('error');
+        console.error('Falha ao processar o retorno do pagamento:', err);
+        setView('error');
       }
-    };
+    })();
+  }, [authInitializing, orderId, status, clearCart, reloadStock]);
 
-    poll();
-    return () => { active = false; clearTimeout(timer); };
-  }, [authInitializing, orderId, mpStatus, clearCart, reloadStock]);
-
-  if (view === 'waiting') {
+  if (view === 'processing') {
     return (
       <Wrapper>
         <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 18 }}><Spinner size={40} /></div>
-        <h1 style={{ fontSize: 'var(--text-2xl)', color: 'var(--color-gray-900)' }}>Aguardando confirmação do pagamento…</h1>
-        <p style={{ color: 'var(--color-gray-500)', marginTop: 8, marginBottom: 24 }}>
-          Pode levar alguns segundos. Você pode deixar esta aba aberta — assim que o pagamento for confirmado, o pedido aparece aqui e em Meus Pedidos.
-        </p>
-        <Button variant="secondary" size="lg" onClick={() => nav('account')}>Ver meus pedidos</Button>
+        <h1 style={{ fontSize: 'var(--text-2xl)', color: 'var(--color-gray-900)' }}>Confirmando seu pagamento…</h1>
+        <p style={{ color: 'var(--color-gray-500)', marginTop: 8 }}>Só um instante.</p>
       </Wrapper>
     );
   }
@@ -141,13 +131,11 @@ export default function PedidoRecebido() {
       <Wrapper>
         <Hero color="var(--color-success)" icon={<Icon.Check size={42} />} title="Pagamento aprovado!"
           subtitle="Obrigado pela compra. Você pode acompanhar o pedido a qualquer momento em Meus Pedidos." />
-        {order && (
-          <OrderCard order={order} footer={(
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: 'var(--color-success)', fontSize: 'var(--text-sm)', fontWeight: 'var(--font-semibold)', marginTop: 8 }}>
-              <Icon.Truck size={16} /> Entrega estimada: 3 dias úteis
-            </div>
-          )} />
-        )}
+        <OrderCard order={order} footer={(
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: 'var(--color-success)', fontSize: 'var(--text-sm)', fontWeight: 'var(--font-semibold)', marginTop: 8 }}>
+            <Icon.Truck size={16} /> Entrega estimada: 3 dias úteis
+          </div>
+        )} />
         <div style={{ display: 'flex', gap: 12, justifyContent: 'center' }}>
           <Button variant="secondary" size="lg" onClick={() => nav('account')}>Ver meus pedidos</Button>
           <Button variant="primary" size="lg" onClick={() => nav('catalog')}>Voltar para a loja</Button>
@@ -159,8 +147,9 @@ export default function PedidoRecebido() {
   if (view === 'pending') {
     return (
       <Wrapper>
-        <Hero color="var(--color-deal-text)" icon={<Icon.AlertCircle size={42} />} title="Pagamento em processamento"
-          subtitle="Seu pedido foi registrado e ainda aguarda a confirmação do pagamento (comum em Pix/boleto). Acompanhe o status em Meus Pedidos — atualizamos assim que for confirmado." />
+        <Hero color="var(--color-deal-text)" icon={<Icon.AlertCircle size={42} />} title="Pagamento pendente"
+          subtitle="Seu pedido foi registrado e aguarda a confirmação do pagamento (comum em Pix/boleto). Atualizamos automaticamente assim que for confirmado — acompanhe em Meus Pedidos." />
+        <OrderCard order={order} />
         <div style={{ display: 'flex', gap: 12, justifyContent: 'center' }}>
           <Button variant="secondary" size="lg" onClick={() => nav('catalog')}>Voltar para a loja</Button>
           <Button variant="primary" size="lg" onClick={() => nav('account')}>Ver meus pedidos</Button>
@@ -172,8 +161,8 @@ export default function PedidoRecebido() {
   if (view === 'error') {
     return (
       <Wrapper>
-        <Hero color="var(--color-danger, #b91c1c)" icon={<Icon.AlertCircle size={42} />} title="Não encontramos seu pedido"
-          subtitle="Não foi possível acompanhar este pagamento. Se você concluiu a compra, ela aparecerá em Meus Pedidos assim que for confirmada." />
+        <Hero color="var(--color-danger, #b91c1c)" icon={<Icon.AlertCircle size={42} />} title="Não foi possível confirmar"
+          subtitle="Tivemos um problema ao confirmar este pagamento. Se o valor foi debitado, o pedido aparecerá em Meus Pedidos assim que for processado." />
         <div style={{ display: 'flex', gap: 12, justifyContent: 'center' }}>
           <Button variant="secondary" size="lg" onClick={() => nav('catalog')}>Voltar para a loja</Button>
           <Button variant="primary" size="lg" onClick={() => nav('account')}>Ver meus pedidos</Button>
