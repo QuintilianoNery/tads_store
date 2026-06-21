@@ -11,9 +11,9 @@ build/
 ui/
 
 # Variáveis de ambiente (NUNCA commitar!)
-# .env
-# .env.local
-# .env.*.local
+.env
+.env.local
+.env.*.local
 *storybook.log
 .vercel
 !.env.example
