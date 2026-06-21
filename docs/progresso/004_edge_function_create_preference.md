@@ -1,5 +1,9 @@
 # 004 — Edge Function `create-preference` (deploy)
 
+> ⚠️ **Histórico — substituído pelo `007`.** A Edge Function do Supabase foi
+> **removida**; a criação da preference agora é a função serverless da Vercel
+> `api/create-preference.js`. Ver [`007_mercadopago_vercel.md`](007_mercadopago_vercel.md).
+
 Esta Edge Function roda **no servidor do Supabase** (Deno) e guarda o
 `MP_ACCESS_TOKEN` em segredo. Ela recebe os itens do carrinho e devolve a URL de
 pagamento (`init_point`).
