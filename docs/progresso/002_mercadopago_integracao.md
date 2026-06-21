@@ -1,5 +1,10 @@
 # 002 — Integração Mercado Pago (Checkout Pro)
 
+> ⚠️ **Histórico — substituído pelo `007`.** Esta versão usava uma **Supabase
+> Edge Function** (`supabase/functions/create-preference`, já removida). A
+> arquitetura atual roda em **funções serverless da Vercel** (`api/`) e inclui
+> webhook. Ver [`007_mercadopago_vercel.md`](007_mercadopago_vercel.md).
+
 ## Objetivo
 
 Permitir que o cliente pague o pedido via **Mercado Pago** (cartão de

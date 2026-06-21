@@ -25,7 +25,7 @@ supabase link --project-ref SEU_PROJECT_REF
 supabase db push
 ```
 
-> Observação: a integração de pagamento (Mercado Pago) **não** depende destas
-> tabelas. Elas são necessárias apenas se você for persistir pedidos,
-> endereços e perfis no banco. A Edge Function de pagamento fica em
-> `supabase/functions/create-preference/` (ver `docs/progresso/004`).
+> Observação: a integração de pagamento (Mercado Pago) **usa** a tabela `orders`
+> — o pedido é criado como `pendente` e confirmado (`pago`) pelo webhook. As
+> funções de pagamento ficam em `api/` (serverless da Vercel), e o webhook grava
+> o status via service role. Ver `docs/progresso/007`.

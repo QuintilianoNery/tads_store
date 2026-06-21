@@ -24,9 +24,9 @@ Nasceu como protótipo offline e evoluiu para uma versão real:
 - **Validação e máscaras** de formulário (CPF/CNPJ, telefone, CEP, e-mail).
 
 > ⚠️ **Estoque**: a DummyJSON não persiste alterações de estoque (aceita `PUT` e
-> finge sucesso). A baixa real é **derivada dos pedidos** no Supabase: o estoque
-> exibido = base da DummyJSON − soma do que o usuário comprou. Ver
-> `getStockConsumption` / `placeOrder` em
+> finge sucesso). A baixa real é **derivada dos pedidos pagos** no Supabase: o
+> estoque exibido = base da DummyJSON − soma do que o usuário comprou. Ver
+> `getStockConsumption` / `reloadStock` em
 > [`src/context/StoreContext.jsx`](src/context/StoreContext.jsx).
 
 ## Stack

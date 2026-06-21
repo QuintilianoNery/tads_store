@@ -12,9 +12,10 @@ Cada arquivo numerado registra uma etapa/assunto implementado:
 | `001_visao_geral.md` | Este índice e estado geral do projeto |
 | `002_mercadopago_integracao.md` | Integração de pagamento Mercado Pago (frontend) |
 | `supabase/migrations/*_initial_schema.sql` | Script SQL das tabelas no Supabase |
-| `004_edge_function_create_preference.md` | Código e deploy da Edge Function de pagamento |
+| `004_edge_function_create_preference.md` | _(histórico)_ Edge Function do Supabase — substituída pelo `007` |
 | `005_mercadopago_setup.md` | Como obter credenciais MP e configurar `.env` |
 | `006_bug_filtro_busca_categorias.md` | Bug: filtro de busca preso ao navegar por categorias (corrigido) |
+| `007_mercadopago_vercel.md` | **Arquitetura atual** do pagamento: funções serverless da Vercel + webhook |
 
 ## Stack do projeto
 
@@ -22,7 +23,7 @@ Cada arquivo numerado registra uma etapa/assunto implementado:
 - **React Router DOM v6** (navegação)
 - **Zustand** (estado global: carrinho, wishlist, auth) com persistência em localStorage
 - **Supabase** (autenticação e, opcionalmente, persistência de pedidos)
-- **Mercado Pago Checkout Pro** (pagamento, via Edge Function)
+- **Mercado Pago Checkout Pro** (pagamento, via funções serverless da Vercel + webhook — ver `007`)
 - **DummyJSON** (catálogo de produtos)
 
 ## Estado atual (resumo)
@@ -39,7 +40,9 @@ Cada arquivo numerado registra uma etapa/assunto implementado:
 - **Integração Mercado Pago** (ver `002`)
 
 ⚠️ Requer ação manual do desenvolvedor para o pagamento funcionar de ponta a ponta:
-- Publicar a Edge Function `create-preference` no Supabase (ver `004`)
+- Cadastrar as variáveis de ambiente na Vercel: `MP_ACCESS_TOKEN`,
+  `MP_WEBHOOK_SECRET`, `SUPABASE_SERVICE_ROLE_KEY` (ver `007`)
+- Configurar o webhook no painel do Mercado Pago (ver `007`)
 - Configurar as credenciais do Mercado Pago (ver `005`)
 
 > Revisão detalhada dos requisitos (RF01–RF18): ver final do `002` e o relatório
