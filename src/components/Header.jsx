@@ -31,7 +31,8 @@ function ActionBtn({ children, onClick, count, label }) {
 
 // Grupos de categorias exibidos no menu superior. Cada grupo é um item pai
 // não-clicável cujo submenu lista os slugs (DummyJSON) relacionados.
-const CATEGORY_GROUPS = [
+// Exportado para ser reutilizado em outras telas (ex.: a página 404).
+export const CATEGORY_GROUPS = [
   { label: 'Eletrônicos', slugs: ['laptops', 'mobile-accessories', 'smartphones', 'tablets'] },
   { label: 'Acessórios', slugs: ['sports-accessories', 'sunglasses', 'mens-watches', 'womens-watches'] },
   { label: 'Velocidade', slugs: ['motorcycle', 'vehicle'] },
