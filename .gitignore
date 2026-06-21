@@ -12,11 +12,9 @@ ui/
 
 # Variáveis de ambiente (NUNCA commitar!)
 .env
+.env*
 .env.local
 .env.*.local
-*storybook.log
-.vercel
-!.env.example
 
 # Editor
 .vscode/*
@@ -40,4 +38,6 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
-
+*storybook.log
+.vercel
+!.env.example
