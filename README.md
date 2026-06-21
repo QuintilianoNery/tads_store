@@ -79,6 +79,32 @@ npm run build      # build de produção (pasta dist/)
 npm run preview    # serve o build de produção
 ```
 
+### Rodando com o pagamento local (funções serverless)
+
+O checkout chama funções em `api/` (ex.: `api/create-preference.js`), que o Vite
+(`npm run dev`) **não** executa. Para testá-las localmente, rode o **`vercel dev`**
+em paralelo, em **dois terminais**:
+
+```bash
+# Terminal 1 — funções /api na porta 3000 (lê o .env)
+npm i -g vercel    # instala a CLI da Vercel (apenas na 1ª vez)
+vercel link        # vincula a pasta ao projeto da Vercel (apenas na 1ª vez)
+vercel dev         # sobe as funções em http://localhost:3000
+```
+
+```bash
+# Terminal 2 — a aplicação (Vite)
+npm run dev        # app em http://localhost:5173
+```
+
+Use a loja em **<http://localhost:5173>**: o [`vite.config.js`](vite.config.js)
+faz proxy de `/api` para o `vercel dev` (3000). Sem o `vercel dev` rodando, o
+botão "Pagar com Mercado Pago" falha (a rota `/api` não existe no Vite).
+
+> A confirmação por **webhook** exige URL pública (https) — só funciona no deploy
+> da Vercel, não em `localhost`. Detalhes em
+> [`docs/progresso/007_mercadopago_vercel.md`](docs/progresso/007_mercadopago_vercel.md).
+
 ## Pagamento (Mercado Pago — Checkout Pro)
 
 ### Pagar em ambiente de teste
