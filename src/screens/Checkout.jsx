@@ -237,7 +237,7 @@ export default function Checkout() {
         <aside style={{ position: isTablet ? 'static' : 'sticky', top: 24, display: 'flex', flexDirection: 'column', gap: 14 }}>
           <div style={{ background: '#fff', border: '1px solid var(--color-gray-100)', borderRadius: 'var(--radius-lg)', padding: 22, boxShadow: 'var(--shadow-sm)' }}>
             <h2 style={{ fontSize: 'var(--text-lg)', color: 'var(--color-gray-900)', marginBottom: 16 }}>Resumo do pedido</h2>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginBottom: 16, maxHeight: 220, overflowY: 'auto' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginBottom: 16, maxHeight: 220, overflowY: 'auto', paddingTop: 8, paddingRight: 8 }}>
               {items.map(({ product, qty }) => (
                 <div key={product.id} style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
                   <div style={{ position: 'relative', flexShrink: 0 }}>
