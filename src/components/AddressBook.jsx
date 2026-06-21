@@ -10,9 +10,12 @@ import {
 } from '@/services/addressService';
 import { isNotEmpty } from '@/utils/validators';
 import { maskPhone, maskCep } from '@/utils/masks';
+import { useIsMobile } from '@/hooks/useMediaQuery';
 
 function FieldRow({ cols, children }) {
-  return <div style={{ display: 'grid', gridTemplateColumns: cols, gap: 12 }}>{children}</div>;
+  const isMobile = useIsMobile();
+  // No celular os campos empilham (uma coluna) para não ficarem espremidos.
+  return <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : cols, gap: 12 }}>{children}</div>;
 }
 
 /** Monta o endereço em até duas linhas para exibição no cartão. */

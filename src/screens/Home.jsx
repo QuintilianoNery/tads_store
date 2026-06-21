@@ -4,6 +4,7 @@ import { Button } from '@/components/ds';
 import { Icon } from '@/components/Icon.jsx';
 import { useStore } from '@/context/StoreContext';
 import { categoryLabel } from '@/utils/formatters';
+import { useIsMobile } from '@/hooks/useMediaQuery';
 import { Eyebrow, ProductGrid } from './shared.jsx';
 
 const categoryImage = (products, category) =>
@@ -36,6 +37,7 @@ function FlashSaleCountdown() {
 
 export default function Home() {
   const { nav, addToCart, toggleWish, wish, products, categories } = useStore();
+  const isMobile = useIsMobile();
   const featuredProducts = products.slice(0, 8);
   const discountedProducts = products.filter((product) => product.discountPercentage > 0).slice(0, 4);
   const highlightedCategories = categories.filter((category) => category !== 'Todos').slice(0, 4);
@@ -49,13 +51,13 @@ export default function Home() {
   return (
     <div>
       {/* Herói */}
-      <section style={{ background: 'var(--gradient-brand)', padding: '72px 0', overflow: 'hidden' }}>
-        <div className="container" style={{ display: 'grid', gridTemplateColumns: '1.1fr 0.9fr', gap: 56, alignItems: 'center' }}>
+      <section style={{ background: 'var(--gradient-brand)', padding: isMobile ? '40px 0' : '72px 0', overflow: 'hidden' }}>
+        <div className="container" style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1.1fr 0.9fr', gap: isMobile ? 32 : 56, alignItems: 'center' }}>
           <div>
             <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '6px 14px', background: 'var(--color-deal)', color: 'var(--color-gray-900)', borderRadius: 'var(--radius-full)', fontSize: 'var(--text-xs)', fontWeight: 'var(--font-bold)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 20 }}>
               <Icon.Tag size={14} /> Semana de ofertas TESTE · até 30% OFF
             </span>
-            <h1 style={{ fontSize: 'var(--text-5xl)', fontWeight: 'var(--font-extrabold)', color: '#fff', lineHeight: 1.08, letterSpacing: '-0.02em', marginBottom: 20 }}>
+            <h1 style={{ fontSize: isMobile ? 'var(--text-3xl)' : 'var(--text-5xl)', fontWeight: 'var(--font-extrabold)', color: '#fff', lineHeight: 1.08, letterSpacing: '-0.02em', marginBottom: 20 }}>
               O marketplace de estudos do IFES que<span style={{ color: 'var(--color-primary-300)' }}> você merece.</span>
             </h1>
             <p style={{ fontSize: 'var(--text-lg)', color: 'var(--color-primary-200)', lineHeight: 1.6, marginBottom: 28, maxWidth: '34rem' }}>
@@ -66,11 +68,14 @@ export default function Home() {
               <Button variant="secondary" size="lg" onClick={() => nav('catalog')} style={{ color: '#fff', borderColor: 'rgba(255,255,255,0.5)' }}>Explorar catálogo</Button>
             </div>
           </div>
-          <div style={{ display: 'flex', justifyContent: 'center' }}>
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: 48, background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 'var(--radius-xl)', backdropFilter: 'blur(10px)' }}>
-              <img src="/images/tads_store_logo.png" alt="" style={{ width: '9rem', height: 'auto', filter: 'brightness(0) invert(1) opacity(0.95)' }} />
+          {/* Painel da marca — ocultado no celular para priorizar o conteúdo */}
+          {!isMobile && (
+            <div style={{ display: 'flex', justifyContent: 'center' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: 48, background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 'var(--radius-xl)', backdropFilter: 'blur(10px)' }}>
+                <img src="/images/tads_store_logo.png" alt="" style={{ width: '9rem', height: 'auto', filter: 'brightness(0) invert(1) opacity(0.95)' }} />
+              </div>
             </div>
-          </div>
+          )}
         </div>
       </section>
 

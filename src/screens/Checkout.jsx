@@ -11,6 +11,7 @@ import { useStore } from '@/context/StoreContext';
 import { createPreference } from '@/lib/mercadopago';
 import { setOrderPreference } from '@/services/orderService';
 import { fmtBRL, finalPrice } from '@/lib/format';
+import { useIsTablet } from '@/hooks/useMediaQuery';
 
 const STEPS = ['Entrega', 'Pagamento', 'Confirmação'];
 
@@ -68,6 +69,7 @@ function formatAddress(a) {
 export default function Checkout() {
   const { nav, cart, user, createPendingOrder } = useStore();
   const items = Object.values(cart || {});
+  const isTablet = useIsTablet();
 
   const [step, setStep] = useState(0);
   const [selectedAddress, setSelectedAddress] = useState(null);
@@ -139,7 +141,7 @@ export default function Checkout() {
       <h1 style={{ fontSize: 'var(--text-3xl)', color: 'var(--color-gray-900)', marginBottom: 20 }}>Finalizar compra</h1>
       <Stepper step={step} />
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) 360px', gap: 28, alignItems: 'start' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: isTablet ? '1fr' : 'minmax(0, 1fr) 360px', gap: 28, alignItems: 'start' }}>
         {/* esquerda: etapa atual */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
 
@@ -232,7 +234,7 @@ export default function Checkout() {
         </div>
 
         {/* direita: resumo do pedido (sempre visível) */}
-        <aside style={{ position: 'sticky', top: 24, display: 'flex', flexDirection: 'column', gap: 14 }}>
+        <aside style={{ position: isTablet ? 'static' : 'sticky', top: 24, display: 'flex', flexDirection: 'column', gap: 14 }}>
           <div style={{ background: '#fff', border: '1px solid var(--color-gray-100)', borderRadius: 'var(--radius-lg)', padding: 22, boxShadow: 'var(--shadow-sm)' }}>
             <h2 style={{ fontSize: 'var(--text-lg)', color: 'var(--color-gray-900)', marginBottom: 16 }}>Resumo do pedido</h2>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginBottom: 16, maxHeight: 220, overflowY: 'auto' }}>
