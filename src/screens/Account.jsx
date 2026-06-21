@@ -11,6 +11,7 @@ import { getUserReviews, upsertReview } from '@/services/reviewService';
 import { isNotEmpty, isValidPassword, MIN_PASSWORD_LENGTH } from '@/utils/validators';
 import { maskCpfCnpj, maskPhone, maskEmail } from '@/utils/masks';
 import { fmtBRL } from '@/lib/format';
+import { useIsTablet } from '@/hooks/useMediaQuery';
 
 // Estilo e rótulo de cada status de pedido.
 const ORDER_STATUS = {
@@ -54,6 +55,7 @@ function PasswordToggle({ shown, onToggle }) {
 
 export default function Account() {
   const { user, nav, wishCount, logout } = useStore();
+  const isTablet = useIsTablet();
   const [activeTab, setActiveTab] = useState('pedidos');
   const name = user?.name || 'Visitante';
   // Ano real de cadastro (vem de auth.users.created_at via mapUser).
@@ -168,9 +170,9 @@ export default function Account() {
   return (
     <div className="container" style={{ padding: '36px 0 64px' }}>
       <h1 style={{ fontSize: 'var(--text-3xl)', color: 'var(--color-gray-900)', marginBottom: 20 }}>Minha Conta</h1>
-      <div style={{ display: 'grid', gridTemplateColumns: '260px minmax(0, 1fr)', gap: 28, alignItems: 'start' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: isTablet ? '1fr' : '260px minmax(0, 1fr)', gap: 28, alignItems: 'start' }}>
         {/* sidebar */}
-        <aside style={{ display: 'flex', flexDirection: 'column', gap: 14, position: 'sticky', top: 24 }}>
+        <aside style={{ display: 'flex', flexDirection: 'column', gap: 14, position: isTablet ? 'static' : 'sticky', top: 24 }}>
           <div style={{ background: 'var(--gradient-brand)', borderRadius: 'var(--radius-lg)', padding: 22, color: '#fff', boxShadow: 'var(--shadow-sm)' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
               <span style={{ width: 48, height: 48, borderRadius: 'var(--radius-full)', background: 'rgba(255,255,255,0.18)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'var(--font-display)', fontWeight: 'var(--font-extrabold)', fontSize: 'var(--text-xl)' }}>{name.charAt(0)}</span>

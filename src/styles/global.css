@@ -92,6 +92,25 @@ h1, h2, h3, h4, h5, h6 {
   padding: 0 var(--container-padding);
 }
 
+/* ── Responsivo ──────────────────────────────────────────── */
+/* Reduz o respiro lateral do container em telas menores para aproveitar a
+   largura útil no celular/tablet. Os layouts internos (grades de duas colunas,
+   herói etc.) trocam de arranjo via JS (ver src/hooks/useMediaQuery.js). */
+@media (max-width: 1023px) {
+  :root {
+    --container-padding: var(--space-5); /* 20px */
+  }
+}
+
+@media (max-width: 767px) {
+  :root {
+    --container-padding: var(--space-4); /* 16px */
+  }
+  html {
+    font-size: 15px; /* escala suave de toda a tipografia em telas pequenas */
+  }
+}
+
 .sr-only {
   position: absolute;
   width: 1px;

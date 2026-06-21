@@ -21,6 +21,7 @@ const Account  = lazy(() => import('@/screens/Account'))
 const Wishlist = lazy(() => import('@/screens/Wishlist'))
 const Help     = lazy(() => import('@/screens/Help'))
 const PedidoRecebido = lazy(() => import('@/screens/PedidoRecebido'))
+const NaoEncontrado  = lazy(() => import('@/screens/NaoEncontrado'))
 
 // Fallback centralizado enquanto a tela carrega.
 function ScreenFallback() {
@@ -62,7 +63,7 @@ function App() {
             <Route path="minha-conta"     element={<RotaProtegida><Account /></RotaProtegida>} />
             <Route path="pedido-recebido" element={<RotaProtegida><PedidoRecebido /></RotaProtegida>} />
             <Route path="ajuda"           element={<Help />} />
-            <Route path="*"               element={<Home />} />
+            <Route path="*"               element={<NaoEncontrado />} />
           </Route>
         </Routes>
       </StoreProvider>

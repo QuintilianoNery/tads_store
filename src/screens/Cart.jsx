@@ -5,6 +5,7 @@ import { Icon } from '@/components/Icon.jsx';
 import { useStore } from '@/context/StoreContext';
 import { fmtBRL, finalPrice } from '@/lib/format';
 import { categoryLabel } from '@/utils/formatters';
+import { useIsTablet } from '@/hooks/useMediaQuery';
 
 function Row({ label, value, big }) {
   return (
@@ -17,6 +18,7 @@ function Row({ label, value, big }) {
 
 export default function Cart() {
   const { nav, cart, setQty, removeItem } = useStore();
+  const isTablet = useIsTablet();
   const [stockAlert, setStockAlert] = useState('');
   const items = Object.values(cart);
 
@@ -50,7 +52,7 @@ export default function Cart() {
           <Icon.AlertCircle size={18} /> <span>{stockAlert}</span>
         </div>
       )}
-      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) 340px', gap: 32, alignItems: 'start' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: isTablet ? '1fr' : 'minmax(0, 1fr) 340px', gap: 32, alignItems: 'start' }}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
           {items.map(({ product, qty }) => (
             <div key={product.id} style={{ display: 'flex', gap: 16, background: '#fff', border: '1px solid var(--color-gray-100)', borderRadius: 'var(--radius-lg)', padding: 16, boxShadow: 'var(--shadow-sm)' }}>
@@ -72,7 +74,7 @@ export default function Cart() {
           ))}
         </div>
 
-        <aside style={{ background: '#fff', border: '1px solid var(--color-gray-100)', borderRadius: 'var(--radius-lg)', padding: 24, boxShadow: 'var(--shadow-sm)', position: 'sticky', top: 24 }}>
+        <aside style={{ background: '#fff', border: '1px solid var(--color-gray-100)', borderRadius: 'var(--radius-lg)', padding: 24, boxShadow: 'var(--shadow-sm)', position: isTablet ? 'static' : 'sticky', top: 24 }}>
           <h2 style={{ fontSize: 'var(--text-xl)', color: 'var(--color-gray-900)', marginBottom: 16 }}>Resumo</h2>
           <Row label="Subtotal" value={fmtBRL(subtotal)} />
           <Row label="Frete" value={shippingCost === 0 ? 'Grátis' : fmtBRL(shippingCost)} />
