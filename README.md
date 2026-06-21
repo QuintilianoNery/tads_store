@@ -79,6 +79,32 @@ npm run build      # build de produção (pasta dist/)
 npm run preview    # serve o build de produção
 ```
 
+## Pagamento (Mercado Pago — Checkout Pro)
+
+### Pagar em ambiente de teste
+
+Use **sempre credenciais de teste** (`APP_USR-`) disponíveis dentro do painel do desenvolvedor do Mercado Pago, em Credenciais Teste, realize o login com a conta Mercado Pago usando a credencial de **comprador de teste** — nunca com a conta de vendedor, senão o
+Mercado Pago recusa com *"uma das partes é de teste"*, e nem com uma conta real.
+
+**Conta de comprador de teste:**
+
+| Campo | Valor |
+| --- | --- |
+| Usuário (no lugar do e-mail) | `TESTUSER1607170486577907987` |
+| Senha | `y6DsZcc89x` |
+
+O comprador pode pagar com o **saldo em conta** ou com um **cartão de teste**:
+
+| Cartão | Número | CVV | Validade |
+| --- | --- | --- | --- |
+| Mastercard | `5031 4332 1540 6351` | `123` | `11/30` |
+| Visa | `4235 6477 2802 5682` | `123` | `11/30` |
+| American Express | `3753 651535 56885` | `1234` | `11/30` |
+| Elo (débito) | `5067 7667 8388 8311` | `123` | `11/30` |
+
+Para **aprovar** o pagamento, preencha o **titular do cartão** com `APRO` e o
+documento **CPF `12345678909`**. Ou use os cartões já cadastrados, para não ter a compra teste recusada 
+
 ## Scripts disponíveis
 
 | Comando | O que faz |

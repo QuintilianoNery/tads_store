@@ -248,18 +248,24 @@ export function StoreProvider({ children }) {
   // produtos comprados na API (DummyJSON), reflete o novo estoque localmente e
   // esvazia o carrinho. A atualização de estoque é best-effort — uma falha de
   // rede não desfaz o pedido já registrado.
-  const placeOrder = useCallback(async ({ subtotal, total, paymentMethod, address }) => {
+  //
+  // `itemsOverride` permite registrar o pedido a partir de um snapshot, e não
+  // do carrinho do contexto. É usado no retorno do Mercado Pago: após o redirect
+  // a página recarrega e o carrinho é recarregado de forma assíncrona, então
+  // confiar no `cart` ali geraria race condition. O checkout normal continua
+  // chamando sem esse parâmetro (usa o carrinho do contexto).
+  const placeOrder = useCallback(async ({ subtotal, total, paymentMethod, address, items: itemsOverride }) => {
     if (!userId) throw new Error('NOT_AUTHENTICATED');
-    const items = Object.values(cart);
+    const items = itemsOverride?.length ? itemsOverride : Object.values(cart);
     if (!items.length) throw new Error('EMPTY_CART');
 
     const order = await createOrder({ userId, items, subtotal, total, paymentMethod, address });
 
     // Reflete a baixa no estoque exibido, descontando do valor atual.
-    setProducts((prev) => prev.map((p) => {
-      const item = cart[p.id];
-      return item ? { ...p, stock: Math.max(0, (p.stock ?? 0) - item.qty) } : p;
-    }));
+    const qtyById = Object.fromEntries(items.map(({ product, qty }) => [product.id, qty]));
+    setProducts((prev) => prev.map((p) => (
+      qtyById[p.id] ? { ...p, stock: Math.max(0, (p.stock ?? 0) - qtyById[p.id]) } : p
+    )));
 
     // Dispara a atualização na API (best-effort; a DummyJSON é mock e não
     // persiste, mas o requisito da etapa é fazer a requisição).

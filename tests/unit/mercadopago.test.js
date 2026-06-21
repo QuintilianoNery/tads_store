@@ -88,4 +88,11 @@ describe('createPreference', () => {
 
     await expect(createPreference({ items: cart, externalReference: 1 })).rejects.toThrow('HTTP 500');
   });
+
+  it('erro claro quando a resposta 200 não é JSON (porta do Vite, /api não servido)', async () => {
+    stubWindow('localhost', 'http://localhost:5173');
+    fetch.mockResolvedValue({ ok: true, json: async () => { throw new SyntaxError('Unexpected token <'); } });
+
+    await expect(createPreference({ items: cart, externalReference: 1 })).rejects.toThrow(/vercel dev/);
+  });
 });

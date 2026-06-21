@@ -20,6 +20,7 @@ const Login    = lazy(() => import('@/screens/Login'))
 const Account  = lazy(() => import('@/screens/Account'))
 const Wishlist = lazy(() => import('@/screens/Wishlist'))
 const Help     = lazy(() => import('@/screens/Help'))
+const PedidoRecebido = lazy(() => import('@/screens/PedidoRecebido'))
 
 // Fallback centralizado enquanto a tela carrega.
 function ScreenFallback() {
@@ -59,6 +60,7 @@ function App() {
             <Route path="login"           element={<Login />} />
             <Route path="lista-de-desejos" element={<Wishlist />} />
             <Route path="minha-conta"     element={<RotaProtegida><Account /></RotaProtegida>} />
+            <Route path="pedido-recebido" element={<RotaProtegida><PedidoRecebido /></RotaProtegida>} />
             <Route path="ajuda"           element={<Help />} />
             <Route path="*"               element={<Home />} />
           </Route>
