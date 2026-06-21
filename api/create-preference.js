@@ -38,7 +38,7 @@ export default async function handler(req, res) {
   }
 
   try {
-    const { items, payer, back_urls, external_reference } = req.body ?? {};
+    const { items, payer, back_urls, notification_url, external_reference } = req.body ?? {};
 
     if (!Array.isArray(items) || items.length === 0) {
       res.status(400).json({ error: 'Lista de itens vazia.' });
@@ -53,6 +53,7 @@ export default async function handler(req, res) {
         items,
         payer,
         back_urls,
+        notification_url,
         external_reference,
         // auto_return exige uma URL pública (https). Em localhost o Mercado
         // Pago recusa, então só ativamos quando a URL de sucesso for https.

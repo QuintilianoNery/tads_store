@@ -3,7 +3,7 @@
 // Espelha exatamente o modelo do protótipo TADS Store (offline): sem API/Supabase.
 import { createContext, useContext, useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { getAllProducts, getCategories, updateProductStock } from '@/services/productService';
+import { getAllProducts, getCategories } from '@/services/productService';
 import { signIn, signUp, signOut, onAuthStateChange } from '@/services/authService';
 import { getFavorites, addFavorite, removeFavorite } from '@/services/favoritesService';
 import { getCart, setCartItem, removeCartItem, clearCart as clearCartRemote } from '@/services/cartService';
@@ -161,17 +161,19 @@ export function StoreProvider({ children }) {
     }));
   }, []);
 
-  // Aplica a baixa persistida (pedidos) assim que o catálogo carrega e a cada
-  // login/logout, para o estoque refletir as compras anteriores após reload.
-  useEffect(() => {
-    if (loadingCatalog) return undefined;
-    if (!userId) { applyStockConsumption({}); return undefined; }
-    let active = true;
+  // Recalcula a baixa de estoque a partir dos pedidos pagos do usuário.
+  // Exposto como `reloadStock` para atualizar o estoque após confirmar um pagamento.
+  const reloadStock = useCallback(() => {
+    if (loadingCatalog) return;
+    if (!userId) { applyStockConsumption({}); return; }
     getStockConsumption(userId)
-      .then((consumed) => { if (active) applyStockConsumption(consumed); })
+      .then(applyStockConsumption)
       .catch((err) => console.error('Falha ao calcular estoque a partir dos pedidos:', err));
-    return () => { active = false; };
   }, [userId, loadingCatalog, applyStockConsumption]);
+
+  // Aplica a baixa persistida assim que o catálogo carrega e a cada login/logout,
+  // para o estoque refletir as compras anteriores após reload.
+  useEffect(() => { reloadStock(); }, [reloadStock]);
 
   // nav('catalog', 'Eletrônicos') / nav('detail', 3) / nav('home')
   const nav = useCallback((name, id = null) => {
@@ -244,40 +246,18 @@ export function StoreProvider({ children }) {
     if (userId) clearCartRemote(userId).catch((err) => console.error('Falha ao sincronizar carrinho:', err));
   }, [userId]);
 
-  // Finaliza a compra: registra o pedido no Supabase, atualiza o estoque dos
-  // produtos comprados na API (DummyJSON), reflete o novo estoque localmente e
-  // esvazia o carrinho. A atualização de estoque é best-effort — uma falha de
-  // rede não desfaz o pedido já registrado.
-  //
-  // `itemsOverride` permite registrar o pedido a partir de um snapshot, e não
-  // do carrinho do contexto. É usado no retorno do Mercado Pago: após o redirect
-  // a página recarrega e o carrinho é recarregado de forma assíncrona, então
-  // confiar no `cart` ali geraria race condition. O checkout normal continua
-  // chamando sem esse parâmetro (usa o carrinho do contexto).
-  const placeOrder = useCallback(async ({ subtotal, total, paymentMethod, address, items: itemsOverride }) => {
+  // Cria o pedido com status 'pendente' antes de redirecionar ao Mercado Pago.
+  // O pedido é confirmado depois (status 'pago') pelo webhook (servidor) ou, como
+  // fallback, no retorno do cliente — ver api/mp-webhook.js e screens/PedidoRecebido.
+  // O carrinho NÃO é esvaziado aqui: só quando o pagamento for confirmado.
+  const createPendingOrder = useCallback(async ({ subtotal, total, address }) => {
     if (!userId) throw new Error('NOT_AUTHENTICATED');
-    const items = itemsOverride?.length ? itemsOverride : Object.values(cart);
+    const items = Object.values(cart);
     if (!items.length) throw new Error('EMPTY_CART');
-
-    const order = await createOrder({ userId, items, subtotal, total, paymentMethod, address });
-
-    // Reflete a baixa no estoque exibido, descontando do valor atual.
-    const qtyById = Object.fromEntries(items.map(({ product, qty }) => [product.id, qty]));
-    setProducts((prev) => prev.map((p) => (
-      qtyById[p.id] ? { ...p, stock: Math.max(0, (p.stock ?? 0) - qtyById[p.id]) } : p
-    )));
-
-    // Dispara a atualização na API (best-effort; a DummyJSON é mock e não
-    // persiste, mas o requisito da etapa é fazer a requisição).
-    await Promise.allSettled(
-      items.map(({ product, qty }) => updateProductStock(product.id, Math.max(0, (product.stock ?? 0) - qty)))
-    ).then((results) => {
-      results.forEach((r) => { if (r.status === 'rejected') console.error('Falha ao atualizar estoque na API:', r.reason); });
+    return createOrder({
+      userId, items, subtotal, total, address,
+      paymentMethod: 'mercadopago', status: 'pendente',
     });
-
-    setCart({});
-    clearCartRemote(userId).catch((err) => console.error('Falha ao limpar carrinho:', err));
-    return order;
   }, [cart, userId]);
 
   // ─── Autenticação (Supabase) ────────────────────────────────
@@ -352,10 +332,10 @@ export function StoreProvider({ children }) {
 
   const value = useMemo(() => ({
     products, categories, loadingCatalog, user, cart, wish, search, setSearch,
-    nav, addToCart, setQty, removeItem, toggleWish, clearCart, placeOrder,
+    nav, addToCart, setQty, removeItem, toggleWish, clearCart, createPendingOrder, reloadStock,
     login, register, logout, authLoading, authError, authInitializing, clearAuthError,
     cartCount, cartTotal, wishCount,
-  }), [products, categories, loadingCatalog, user, cart, wish, search, nav, addToCart, setQty, removeItem, toggleWish, clearCart, placeOrder, login, register, logout, authLoading, authError, authInitializing, clearAuthError, cartCount, cartTotal, wishCount]);
+  }), [products, categories, loadingCatalog, user, cart, wish, search, nav, addToCart, setQty, removeItem, toggleWish, clearCart, createPendingOrder, reloadStock, login, register, logout, authLoading, authError, authInitializing, clearAuthError, cartCount, cartTotal, wishCount]);
 
   return <StoreContext.Provider value={value}>{children}</StoreContext.Provider>;
 }
