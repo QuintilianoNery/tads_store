@@ -21,6 +21,7 @@ import { useStore } from '@/context/StoreContext';
 import { getOrderById, markOrderPaid } from '@/services/orderService';
 import { orderNumber } from '@/lib/orderNumber';
 import { fmtBRL } from '@/lib/format';
+import { useIsMobile } from '@/hooks/useMediaQuery';
 
 const PENDING_ORDER_ID_KEY = 'tads-pending-order-id';
 
@@ -59,6 +60,7 @@ function Wrapper({ children }) {
 
 export default function PedidoRecebido() {
   const { nav, clearCart, reloadStock, authInitializing } = useStore();
+  const isMobile = useIsMobile();
   const [params] = useSearchParams();
   // O Mercado Pago devolve o id do pedido em external_reference; mantemos ?order=
   // e o sessionStorage como fallback (ex.: mesma aba sem o parâmetro).
@@ -136,7 +138,7 @@ export default function PedidoRecebido() {
             <Icon.Truck size={16} /> Entrega estimada: 3 dias úteis
           </div>
         )} />
-        <div style={{ display: 'flex', gap: 12, justifyContent: 'center' }}>
+        <div style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', gap: 12, justifyContent: 'center' }}>
           <Button variant="secondary" size="lg" onClick={() => nav('account')}>Ver meus pedidos</Button>
           <Button variant="primary" size="lg" onClick={() => nav('catalog')}>Voltar para a loja</Button>
         </div>
@@ -150,7 +152,7 @@ export default function PedidoRecebido() {
         <Hero color="var(--color-deal-text)" icon={<Icon.AlertCircle size={42} />} title="Pagamento pendente"
           subtitle="Seu pedido foi registrado e aguarda a confirmação do pagamento (comum em Pix/boleto). Atualizamos automaticamente assim que for confirmado — acompanhe em Meus Pedidos." />
         <OrderCard order={order} />
-        <div style={{ display: 'flex', gap: 12, justifyContent: 'center' }}>
+        <div style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', gap: 12, justifyContent: 'center' }}>
           <Button variant="secondary" size="lg" onClick={() => nav('catalog')}>Voltar para a loja</Button>
           <Button variant="primary" size="lg" onClick={() => nav('account')}>Ver meus pedidos</Button>
         </div>
@@ -163,7 +165,7 @@ export default function PedidoRecebido() {
       <Wrapper>
         <Hero color="var(--color-danger, #b91c1c)" icon={<Icon.AlertCircle size={42} />} title="Não foi possível confirmar"
           subtitle="Tivemos um problema ao confirmar este pagamento. Se o valor foi debitado, o pedido aparecerá em Meus Pedidos assim que for processado." />
-        <div style={{ display: 'flex', gap: 12, justifyContent: 'center' }}>
+        <div style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', gap: 12, justifyContent: 'center' }}>
           <Button variant="secondary" size="lg" onClick={() => nav('catalog')}>Voltar para a loja</Button>
           <Button variant="primary" size="lg" onClick={() => nav('account')}>Ver meus pedidos</Button>
         </div>
@@ -176,7 +178,7 @@ export default function PedidoRecebido() {
     <Wrapper>
       <Hero color="var(--color-danger, #b91c1c)" icon={<Icon.AlertCircle size={42} />} title="Pagamento não concluído"
         subtitle="O pagamento não foi aprovado ou foi cancelado. Nenhum valor foi cobrado e seu carrinho continua salvo — é só tentar de novo." />
-      <div style={{ display: 'flex', gap: 12, justifyContent: 'center' }}>
+      <div style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', gap: 12, justifyContent: 'center' }}>
         <Button variant="secondary" size="lg" onClick={() => nav('catalog')}>Voltar para a loja</Button>
         <Button variant="primary" size="lg" onClick={() => nav('checkout')}>Tentar novamente</Button>
       </div>

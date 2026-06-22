@@ -186,7 +186,7 @@ export function AddressBook({ userId, selectable = false, selectedId = null, onS
               </span>
             )}
             {!selectable && <Icon.MapPin size={22} style={{ color: 'var(--color-primary-700)', flexShrink: 0, marginTop: 2 }} />}
-            <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ flex: 1, minWidth: 0, overflowWrap: 'anywhere' }}>
               <strong style={{ color: 'var(--color-gray-900)' }}>{addr.firstName} {addr.lastName}</strong>
               <p style={{ fontSize: 'var(--text-sm)', color: 'var(--color-gray-600)', marginTop: 4 }}>
                 {formatAddressLines(addr).map((line, i) => <span key={i}>{line}<br /></span>)}
