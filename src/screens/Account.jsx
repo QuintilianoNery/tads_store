@@ -168,7 +168,7 @@ export default function Account() {
   ];
 
   return (
-    <div className="container" style={{ padding: '36px 0 64px' }}>
+    <div className="container" style={{ padding: '36px var(--container-padding) 64px' }}>
       <h1 style={{ fontSize: 'var(--text-3xl)', color: 'var(--color-gray-900)', marginBottom: 20 }}>Minha Conta</h1>
       <div style={{ display: 'grid', gridTemplateColumns: isTablet ? '1fr' : '260px minmax(0, 1fr)', gap: 28, alignItems: 'start' }}>
         {/* sidebar */}

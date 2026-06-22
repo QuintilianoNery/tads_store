@@ -89,7 +89,7 @@ export default function Login() {
   const bannerBase = { display: 'flex', alignItems: 'center', gap: 8, padding: '10px 14px', borderRadius: 'var(--radius-md)', fontSize: 'var(--text-sm)', marginBottom: 16, lineHeight: 1.4 };
 
   return (
-    <div className="container" style={{ padding: '48px 0 64px' }}>
+    <div className="container" style={{ padding: '48px var(--container-padding) 64px' }}>
       <h1 style={{ fontSize: 'var(--text-3xl)', color: 'var(--color-gray-900)', marginBottom: 32 }}>Minha Conta</h1>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: 32, maxWidth: 880 }}>
         <section style={{ background: '#fff', border: '1px solid var(--color-gray-100)', borderRadius: 'var(--radius-lg)', padding: 32, boxShadow: 'var(--shadow-sm)' }}>

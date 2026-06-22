@@ -10,7 +10,7 @@ export default function Wishlist() {
 
   if (!wishlistedProducts.length) {
     return (
-      <div className="container" style={{ padding: '64px 0', textAlign: 'center' }}>
+      <div className="container" style={{ padding: '64px var(--container-padding)', textAlign: 'center' }}>
         <h1 style={{ fontSize: 'var(--text-3xl)', color: 'var(--color-gray-900)', marginBottom: 12 }}>Sua lista está vazia</h1>
         <p style={{ color: 'var(--color-gray-500)' }}>Toque no coração de um produto para salvá-lo aqui.</p>
       </div>
@@ -18,7 +18,7 @@ export default function Wishlist() {
   }
 
   return (
-    <div className="container" style={{ padding: '40px 0 64px' }}>
+    <div className="container" style={{ padding: '40px var(--container-padding) 64px' }}>
       <h1 style={{ fontSize: 'var(--text-3xl)', color: 'var(--color-gray-900)', marginBottom: 24 }}>Lista de Desejos</h1>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 24 }}>
         {wishlistedProducts.map((product) => (

@@ -125,7 +125,7 @@ export default function Checkout() {
   // ── Carrinho vazio ─────────────────────────────────────────
   if (!items.length) {
     return (
-      <div className="container" style={{ padding: '64px 0', textAlign: 'center' }}>
+      <div className="container" style={{ padding: '64px var(--container-padding)', textAlign: 'center' }}>
         <h1 style={{ fontSize: 'var(--text-3xl)', color: 'var(--color-gray-900)', marginBottom: 12 }}>Nada para finalizar</h1>
         <p style={{ color: 'var(--color-gray-500)', marginBottom: 24 }}>Seu carrinho está vazio. Adicione produtos antes do checkout.</p>
         <Button variant="primary" size="lg" onClick={() => nav('catalog')}>Ver produtos <Icon.ArrowRight size={18} /></Button>
@@ -134,7 +134,7 @@ export default function Checkout() {
   }
 
   return (
-    <div className="container" style={{ padding: '36px 0 64px' }}>
+    <div className="container" style={{ padding: '36px var(--container-padding) 64px' }}>
       <button onClick={() => nav('cart')} style={{ display: 'flex', alignItems: 'center', gap: 4, color: 'var(--color-gray-500)', background: 'none', border: 'none', cursor: 'pointer', fontSize: 'var(--text-sm)', marginBottom: 16 }}>
         <Icon.ChevronLeft size={16} /> Voltar ao carrinho
       </button>

@@ -160,7 +160,7 @@ export default function Detail() {
   // Catálogo ainda carregando (lista vazia): evita quebrar antes do fetch concluir.
   if (!product) {
     return (
-      <div className="container" style={{ padding: '80px 0', textAlign: 'center', color: 'var(--color-gray-500)' }}>
+      <div className="container" style={{ padding: '80px var(--container-padding)', textAlign: 'center', color: 'var(--color-gray-500)' }}>
         Carregando produto…
       </div>
     );
@@ -199,7 +199,7 @@ export default function Detail() {
   ];
 
   return (
-    <div className="container" style={{ padding: '24px 0 64px' }}>
+    <div className="container" style={{ padding: '24px var(--container-padding) 64px' }}>
       <button onClick={() => nav('catalog')} style={{ display: 'flex', alignItems: 'center', gap: 4, color: 'var(--color-gray-500)', background: 'none', border: 'none', cursor: 'pointer', fontSize: 'var(--text-sm)', marginBottom: 20 }}>
         <Icon.ChevronLeft size={16} /> Voltar para a loja
       </button>
