@@ -53,7 +53,7 @@ export default function Catalog() {
       : products.filter((product) => product.category === category).length;
 
   return (
-    <div className="container" style={{ padding: '32px 0 64px' }}>
+    <div className="container" style={{ padding: '32px var(--container-padding) 64px' }}>
       <div style={{ marginBottom: 22 }}>
         <span style={{ fontSize: 'var(--text-xs)', color: 'var(--color-gray-400)' }}>Início / <span style={{ color: 'var(--color-gray-600)' }}>{categoryLabel(selectedCategory)}</span></span>
         <h1 style={{ fontSize: 'var(--text-3xl)', color: 'var(--color-gray-900)', marginTop: 4 }}>{selectedCategory === 'Todos' ? 'Todos os produtos' : categoryLabel(selectedCategory)}</h1>

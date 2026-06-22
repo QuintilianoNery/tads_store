@@ -36,11 +36,11 @@ export default function Footer() {
   const { nav } = useStore();
   const year = 2026;
   const colTitle = { fontFamily: 'var(--font-display)', fontSize: 'var(--text-sm)', fontWeight: 'var(--font-semibold)', letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--color-accent)', marginBottom: 12 };
-  const contactRow = { display: 'flex', alignItems: 'flex-start', gap: 10, fontSize: 'var(--text-sm)', color: 'var(--color-primary-200)', lineHeight: 1.5, marginBottom: 12 };
+  const contactRow = { display: 'flex', alignItems: 'flex-start', gap: 10, fontSize: 'var(--text-sm)', color: 'var(--color-primary-200)', lineHeight: 1.5, marginBottom: 12, minWidth: 0, overflowWrap: 'anywhere' };
 
   return (
     <footer style={{ background: 'var(--color-primary-900)', color: 'var(--color-primary-100)', marginTop: 'auto' }}>
-      <div className="container" style={{ display: 'grid', gridTemplateColumns: '1.4fr 1fr 1fr 1.3fr', gap: 40, padding: '56px 0 40px' }}>
+      <div className="container" style={{ display: 'grid', gridTemplateColumns: '1.4fr 1fr 1fr 1.3fr', gap: 40, padding: '56px var(--container-padding) 40px' }}>
         {/* Marca */}
         <div>
           <button onClick={() => nav('home')} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, display: 'block', marginBottom: 18 }}>
@@ -95,7 +95,7 @@ export default function Footer() {
 
       {/* Pagamento seguro — Mercado Pago */}
       <div style={{ borderTop: '1px solid var(--color-primary-700)' }}>
-        <div className="container" style={{ padding: '20px 0', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10 }}>
+        <div className="container" style={{ padding: '20px var(--container-padding)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10 }}>
           <span style={{ fontSize: 'var(--text-xs)', color: 'var(--color-primary-300)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Pagamento seguro</span>
           <a
             href="https://www.mercadopago.com.br"
@@ -114,7 +114,7 @@ export default function Footer() {
       </div>
 
       <div style={{ borderTop: '1px solid var(--color-primary-700)' }}>
-        <div className="container" style={{ padding: '18px 0', textAlign: 'center' }}>
+        <div className="container" style={{ padding: '18px var(--container-padding)', textAlign: 'center' }}>
           <p style={{ fontSize: 'var(--text-xs)', color: 'var(--color-primary-300)' }}>
             © {year} TADS Store. Todos os direitos reservados - Desenvolvido por{' '}
             <a

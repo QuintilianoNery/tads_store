@@ -116,7 +116,7 @@ export default function Help() {
   const { nav } = useStore();
 
   return (
-    <div className="container" style={{ padding: '40px 0 64px', maxWidth: 880 }}>
+    <div className="container" style={{ padding: '40px var(--container-padding) 64px', maxWidth: 880 }}>
       <header style={{ marginBottom: 32 }}>
         <Eyebrow>Central de Ajuda</Eyebrow>
         <h1 style={{ fontSize: 'var(--text-3xl)', color: 'var(--color-gray-900)', margin: '8px 0 8px' }}>

@@ -44,7 +44,7 @@ export default function Cart() {
 
   return (
     <div className="container" style={{ padding: '40px 0 64px' }}>
-      <h1 style={{ fontSize: 'var(--text-3xl)', color: 'var(--color-gray-900)', marginBottom: 24 }}>Carrinho</h1>
+      <h1 style={{ fontSize: 'var(--text-3xl)', color: 'var(--color-gray-900)', marginBottom: 24, paddingLeft: 'var(--container-padding)', paddingRight: 'var(--container-padding)' }}>Carrinho</h1>
       {stockAlert && (
         <div role="alert" aria-live="assertive" style={{ display: 'flex', alignItems: 'center', gap: 8, background: '#fef3c7', color: '#92400e', padding: '10px 14px', borderRadius: 'var(--radius-md)', fontSize: 'var(--text-sm)', marginBottom: 16 }}>
           <Icon.AlertCircle size={18} /> <span>{stockAlert}</span>
