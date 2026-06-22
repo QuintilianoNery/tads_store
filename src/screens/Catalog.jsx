@@ -2,9 +2,11 @@
 import { useState, useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 import { StarRating } from '@/components/ds';
+import { Icon } from '@/components/Icon.jsx';
 import { useStore } from '@/context/StoreContext';
 import { finalPrice } from '@/lib/format';
 import { categoryLabel } from '@/utils/formatters';
+import { useIsTablet } from '@/hooks/useMediaQuery';
 import { ProductGrid } from './shared.jsx';
 
 function FilterGroup({ title, children }) {
@@ -19,10 +21,13 @@ function FilterGroup({ title, children }) {
 export default function Catalog() {
   const { nav, addToCart, toggleWish, wish, products, search, setSearch, categories } = useStore();
   const initialCategory = useLocation().state?.cat || null;
+  const isTablet = useIsTablet();
   const [selectedCategory, setSelectedCategory] = useState(initialCategory || 'Todos');
   const [sortOrder, setSortOrder] = useState('relevancia');
   const [ratingFilter, setRatingFilter] = useState('all'); // all | high (4+) | low (3-)
   const [dealsFilter, setDealsFilter] = useState('all');    // all | with | without
+  // No tablet/celular a trilha de filtros vira um painel recolhível.
+  const [filtersOpen, setFiltersOpen] = useState(false);
   // Ao chegar numa categoria pela navegação (menu/Home), troca a categoria e
   // zera os filtros — eles não devem "vazar" entre categorias.
   useEffect(() => {
@@ -59,9 +64,21 @@ export default function Catalog() {
         <h1 style={{ fontSize: 'var(--text-3xl)', color: 'var(--color-gray-900)', marginTop: 4 }}>{selectedCategory === 'Todos' ? 'Todos os produtos' : categoryLabel(selectedCategory)}</h1>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '236px minmax(0, 1fr)', gap: 28, alignItems: 'start' }}>
-        {/* Trilha de filtros */}
-        <aside style={{ background: '#fff', border: '1px solid var(--color-gray-100)', borderRadius: 'var(--radius-lg)', padding: 20, boxShadow: 'var(--shadow-sm)', position: 'sticky', top: 24 }}>
+      {/* Botão de filtros (tablet/celular) */}
+      {isTablet && (
+        <button
+          onClick={() => setFiltersOpen((v) => !v)}
+          aria-expanded={filtersOpen}
+          style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', justifyContent: 'center', padding: '12px 16px', marginBottom: 16, background: '#fff', border: '1px solid var(--color-gray-200)', borderRadius: 'var(--radius-md)', boxShadow: 'var(--shadow-sm)', cursor: 'pointer', fontFamily: 'var(--font-display)', fontSize: 'var(--text-sm)', fontWeight: 'var(--font-bold)', color: 'var(--color-gray-800)' }}
+        >
+          <Icon.Menu size={16} /> Filtros
+          <Icon.ChevronDown size={16} style={{ transform: filtersOpen ? 'rotate(180deg)' : 'none', transition: 'transform var(--transition-fast)' }} />
+        </button>
+      )}
+
+      <div style={{ display: 'grid', gridTemplateColumns: isTablet ? '1fr' : '236px minmax(0, 1fr)', gap: 28, alignItems: 'start' }}>
+        {/* Trilha de filtros — recolhível no tablet/celular */}
+        <aside style={{ display: isTablet && !filtersOpen ? 'none' : 'block', background: '#fff', border: '1px solid var(--color-gray-100)', borderRadius: 'var(--radius-lg)', padding: 20, boxShadow: 'var(--shadow-sm)', position: isTablet ? 'static' : 'sticky', top: 24 }}>
           <FilterGroup title="Categorias">
             <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
               {categories.map((category) => (

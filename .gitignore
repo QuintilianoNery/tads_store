@@ -7,8 +7,9 @@ node_modules/
 dist/
 dist-ssr/
 build/
-
 ui/
+
+dev-server.log
 
 # Variáveis de ambiente (NUNCA commitar!)
 .env

@@ -7,6 +7,7 @@ import { useStore } from '@/context/StoreContext';
 import { fmtBRL, finalPrice, galleryFor } from '@/lib/format';
 import { categoryLabel } from '@/utils/formatters';
 import { getProductReviews } from '@/services/reviewService';
+import { useIsTablet, useIsMobile } from '@/hooks/useMediaQuery';
 import { Eyebrow, ProductGrid } from './shared.jsx';
 
 // Distribuição ilustrativa do catálogo, usada enquanto não há avaliações reais.
@@ -77,12 +78,13 @@ function ReviewsBlock({ rating, reviews }) {
   const summary = summarize(reviews);
   const headlineRating = summary ? summary.average : rating;
   const breakdown = summary ? summary.breakdown : RATING_BREAKDOWN;
+  const isMobile = useIsMobile();
 
   return (
     <section style={{ marginTop: 56, borderTop: '1px solid var(--color-gray-200)', paddingTop: 40 }}>
       <Eyebrow>Opiniões</Eyebrow>
       <h2 style={{ fontSize: 'var(--text-2xl)', color: 'var(--color-gray-900)', margin: '6px 0 28px' }}>Avaliações de clientes</h2>
-      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(220px, 280px) 1fr', gap: 40, alignItems: 'start' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'minmax(220px, 280px) 1fr', gap: isMobile ? 24 : 40, alignItems: 'start' }}>
         <div style={{ background: '#fff', border: '1px solid var(--color-gray-100)', borderRadius: 'var(--radius-lg)', padding: 24, boxShadow: 'var(--shadow-sm)', textAlign: 'center' }}>
           <div style={{ fontFamily: 'var(--font-display)', fontSize: '3rem', fontWeight: 'var(--font-extrabold)', color: 'var(--color-gray-900)', lineHeight: 1 }}>{headlineRating.toFixed(1)}</div>
           <div style={{ display: 'flex', justifyContent: 'center', margin: '10px 0 6px' }}><StarRating rating={headlineRating} size={18} /></div>
@@ -139,6 +141,7 @@ function ReviewsBlock({ rating, reviews }) {
 export default function Detail() {
   const { nav, addToCart, toggleWish, wish, products, cart } = useStore();
   const { id } = useParams();
+  const isTablet = useIsTablet();
   const [qty, setQty] = useState(1);
   const [stockAlert, setStockAlert] = useState('');
   const [reviews, setReviews] = useState([]);
@@ -200,7 +203,7 @@ export default function Detail() {
       <button onClick={() => nav('catalog')} style={{ display: 'flex', alignItems: 'center', gap: 4, color: 'var(--color-gray-500)', background: 'none', border: 'none', cursor: 'pointer', fontSize: 'var(--text-sm)', marginBottom: 20 }}>
         <Icon.ChevronLeft size={16} /> Voltar para a loja
       </button>
-      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)', gap: 48, alignItems: 'start' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: isTablet ? '1fr' : 'minmax(0, 1fr) minmax(0, 1fr)', gap: isTablet ? 28 : 48, alignItems: 'start' }}>
         <Gallery images={images} discount={product.discountPercentage} />
 
         <div>
@@ -259,7 +262,7 @@ export default function Detail() {
           </button>
 
           {/* Trust row */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12, marginTop: 22 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 12, marginTop: 22 }}>
             {trustBadges.map((badge, i) => (
               <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px', background: '#fff', border: '1px solid var(--color-gray-100)', borderRadius: 'var(--radius-md)' }}>
                 <span style={{ color: 'var(--color-primary-700)', flexShrink: 0 }}>{badge.icon}</span>

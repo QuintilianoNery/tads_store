@@ -40,7 +40,7 @@ export default function Footer() {
 
   return (
     <footer style={{ background: 'var(--color-primary-900)', color: 'var(--color-primary-100)', marginTop: 'auto' }}>
-      <div className="container" style={{ display: 'grid', gridTemplateColumns: '1.4fr 1fr 1fr 1.3fr', gap: 40, padding: '56px var(--container-padding) 40px' }}>
+      <div className="container" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 40, padding: '56px var(--container-padding) 40px' }}>
         {/* Marca */}
         <div>
           <button onClick={() => nav('home')} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, display: 'block', marginBottom: 18 }}>

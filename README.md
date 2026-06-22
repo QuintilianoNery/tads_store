@@ -22,6 +22,26 @@ Nasceu como protótipo offline e evoluiu para uma versão real:
 - **Pedidos**: histórico e detalhes por usuário.
 - **Rotas protegidas**: apenas usuários autenticados acessam seus próprios dados.
 - **Validação e máscaras** de formulário (CPF/CNPJ, telefone, CEP, e-mail).
+- **Layout responsivo**: adaptado para celular e tablet (menu em gaveta,
+  colunas que empilham, grades fluidas).
+- **Página 404**: rota coringa (`path="*"`) com mensagem amigável e atalhos de
+  volta à loja e para as categorias ([`src/screens/NaoEncontrado.jsx`](src/screens/NaoEncontrado.jsx)).
+
+## Bônus e diferenciais
+
+Além dos requisitos das etapas, o projeto inclui:
+
+- **Autenticação real com JWT (Supabase)**: login, cadastro, logout e sessão
+  persistente usando o **JWT do Supabase Auth** (em vez de um login simulado),
+  com **rotas protegidas** e **RLS** no Postgres para isolar os dados de cada
+  usuário. Ver [`src/services/authService.js`](src/services/authService.js) e
+  [`src/components/RotaProtegida.jsx`](src/components/RotaProtegida.jsx).
+- **Checkout com Mercado Pago (Checkout Pro)**: a preference é criada em função
+  serverless (o Access Token nunca vai ao front-end) e o pagamento é confirmado
+  por webhook. Detalhes na seção [Pagamento](#pagamento-mercado-pago--checkout-pro).
+- **Storybook + testes**: componentes do Design System documentados em
+  `*.stories.jsx`, com testes de componente (browser) e testes unitários (node).
+- **Página 404 dedicada** e **layout responsivo** (mobile/tablet).
 
 > ⚠️ **Estoque**: a DummyJSON não persiste alterações de estoque (aceita `PUT` e
 > finge sucesso). A baixa real é **derivada dos pedidos pagos** no Supabase: o
@@ -176,7 +196,8 @@ src/
 │   ├── Footer.jsx     # rodapé
 │   └── Icon.jsx       # ícones Lucide inline
 ├── context/           # StoreContext — estado global (catálogo, carrinho, favoritos, sessão, nav)
-├── screens/           # Home, Catalog, Detail, Cart, Checkout, Login, Account, Wishlist
+├── screens/           # Home, Catalog, Detail, Cart, Checkout, Login, Account, Wishlist, Help, PedidoRecebido, NaoEncontrado (404)
+├── hooks/             # useMediaQuery — responsividade para a UI em estilos inline
 ├── services/          # acesso a dados: supabase, auth, product, favorites, cart, address, order
 ├── lib/               # puros: format.js (fmtBRL, finalPrice), orderNumber.js
 ├── utils/             # validators.js, masks.js

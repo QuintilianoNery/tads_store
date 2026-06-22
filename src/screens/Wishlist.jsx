@@ -20,7 +20,7 @@ export default function Wishlist() {
   return (
     <div className="container" style={{ padding: '40px 0 64px' }}>
       <h1 style={{ fontSize: 'var(--text-3xl)', color: 'var(--color-gray-900)', marginBottom: 24 }}>Lista de Desejos</h1>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 24 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 24 }}>
         {wishlistedProducts.map((product) => (
           <div key={product.id} onClick={() => nav('detail', product.id)} style={{ cursor: 'pointer' }}>
             <ProductCard
