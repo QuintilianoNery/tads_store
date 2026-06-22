@@ -212,7 +212,7 @@ export default function Header() {
             <button onClick={() => nav('home')} aria-label="Página inicial" style={{ background: 'none', border: 'none', cursor: 'pointer', flexShrink: 0, display: 'flex', marginRight: 'auto' }}>
               <img src={LOGO} alt="TADS Store" style={{ height: 40, width: 'auto', objectFit: 'contain', display: 'block' }} />
             </button>
-            <ActionBtn onClick={() => nav('wishlist')} count={user ? wishCount : 0} label="Lista de desejos"><Icon.Heart size={22} /></ActionBtn>
+            <ActionBtn onClick={() => nav('wishlist')} count={wishCount} label="Lista de desejos"><Icon.Heart size={22} /></ActionBtn>
             <ActionBtn onClick={() => nav('cart')} count={cartCount} label="Carrinho"><Icon.Cart size={22} /></ActionBtn>
           </div>
           <div className="container" style={{ marginTop: 10 }}>
@@ -253,7 +253,7 @@ export default function Header() {
           <SearchForm query={query} setQuery={setQuery} onSubmit={submitSearch} style={{ flex: 1 }} />
 
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
-            <ActionBtn onClick={() => nav('wishlist')} count={user ? wishCount : 0} label="Lista de desejos"><Icon.Heart size={22} /></ActionBtn>
+            <ActionBtn onClick={() => nav('wishlist')} count={wishCount} label="Lista de desejos"><Icon.Heart size={22} /></ActionBtn>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               <ActionBtn onClick={() => nav('cart')} count={cartCount} label="Carrinho"><Icon.Cart size={22} /></ActionBtn>
               <span style={{ fontFamily: 'var(--font-display)', fontSize: 'var(--text-sm)', fontWeight: 'var(--font-semibold)', color: 'var(--color-primary-800)', whiteSpace: 'nowrap' }}>{fmtBRL(cartTotal)}</span>
