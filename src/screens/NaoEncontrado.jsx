@@ -9,7 +9,7 @@ export default function NaoEncontrado() {
   const { nav } = useStore();
 
   return (
-    <div className="container" style={{ padding: '72px 0 96px', textAlign: 'center', maxWidth: 640 }}>
+    <div className="container" style={{ padding: '72px var(--container-padding) 96px', textAlign: 'center', maxWidth: 640 }}>
       <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 72, height: 72, borderRadius: 'var(--radius-full)', background: 'var(--color-primary-50)', color: 'var(--color-primary-700)', marginBottom: 20 }}>
         <Icon.AlertCircle size={36} />
       </span>

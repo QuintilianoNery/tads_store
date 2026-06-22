@@ -54,7 +54,7 @@ function OrderCard({ order, footer }) {
 }
 
 function Wrapper({ children }) {
-  return <div className="container" style={{ padding: '64px 0', maxWidth: 560, textAlign: 'center' }}>{children}</div>;
+  return <div className="container" style={{ padding: '64px var(--container-padding)', maxWidth: 560, textAlign: 'center' }}>{children}</div>;
 }
 
 export default function PedidoRecebido() {
