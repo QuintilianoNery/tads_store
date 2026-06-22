@@ -218,5 +218,3 @@ tests/                 # unit/ (node) + helpers/
 5. Garanta `npm run lint` sem warnings.
 6. Commits seguem `feat:` / `fix:` / `test:` / `docs:` / `chore:`.
 7. Abra um PR para `main` para revisão.
-
-> Mais contexto de arquitetura e armadilhas em [`CLAUDE.md`](CLAUDE.md).
