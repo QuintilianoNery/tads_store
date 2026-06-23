@@ -1,4 +1,4 @@
-<h1 align="center">TADS Store</h1>
+<h1 align="center">TADS Store - Quintiliano Nery</h1>
 
 <p align="center">
   <img src="public/images/capa_repo.png" alt="Capa do TADS Store" width="90%" />
