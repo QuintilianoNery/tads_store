@@ -1,7 +1,7 @@
 // src/screens/Catalog.jsx — trilha de filtros + toolbar de ordenação + grade
 import { useState, useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
-import { StarRating } from '@/components/ds';
+import { StarRating, Card } from '@/components/ds';
 import { Icon } from '@/components/Icon.jsx';
 import { useStore } from '@/context/StoreContext';
 import { finalPrice } from '@/lib/format';
@@ -78,7 +78,7 @@ export default function Catalog() {
 
       <div style={{ display: 'grid', gridTemplateColumns: isTablet ? '1fr' : '236px minmax(0, 1fr)', gap: 28, alignItems: 'start' }}>
         {/* Trilha de filtros — recolhível no tablet/celular */}
-        <aside style={{ display: isTablet && !filtersOpen ? 'none' : 'block', background: '#fff', border: '1px solid var(--color-gray-100)', borderRadius: 'var(--radius-lg)', padding: 20, boxShadow: 'var(--shadow-sm)', position: isTablet ? 'static' : 'sticky', top: 24 }}>
+        <Card as="aside" padding={20} style={{ display: isTablet && !filtersOpen ? 'none' : 'block', position: isTablet ? 'static' : 'sticky', top: 24 }}>
           <FilterGroup title="Categorias">
             <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
               {categories.map((category) => (
@@ -122,7 +122,7 @@ export default function Catalog() {
               ))}
             </div>
           </FilterGroup>
-        </aside>
+        </Card>
 
         {/* Resultados */}
         <div>
