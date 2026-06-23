@@ -1,4 +1,8 @@
-# TADS Store
+<h1 align="center">TADS Store</h1>
+
+<p align="center">
+  <img src="public/images/capa_repo.png" alt="Capa do TADS Store" width="90%" />
+</p>
 
 Marketplace de tecnologia (pt-BR) construído em **React 18 + Vite**, fiel ao
 **TADS Store Design System** (trust-blue + âmbar, fonte Manrope).
