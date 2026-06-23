@@ -1,13 +1,16 @@
-# TADS Store
+<h1 align="center">TADS Store</h1>
+
+<p align="center">
+  <img src="public/images/capa_repo.png" alt="Capa do TADS Store" width="60%" />
+</p>
 
 Marketplace de tecnologia (pt-BR) construído em **React 18 + Vite**, fiel ao
 **TADS Store Design System** (trust-blue + âmbar, fonte Manrope).
 
-Nasceu como protótipo offline e evoluiu para uma versão real:
-
-- **Autenticação e dados** no **Supabase** (auth JWT + Postgres com RLS).
-- **Catálogo** vindo da **API DummyJSON** (somente leitura).
-- Carrinho, favoritos, endereços e pedidos **persistidos por usuário**.
+Nasceu como protótipo offline e evoluiu para uma versão real, com
+**autenticação e dados no Supabase** (auth JWT + Postgres com RLS), **catálogo**
+da **API DummyJSON** e **checkout com Mercado Pago**. Carrinho, favoritos,
+endereços, avaliações e pedidos são persistidos por usuário.
 
 ## Funcionalidades
 
@@ -17,6 +20,7 @@ Nasceu como protótipo offline e evoluiu para uma versão real:
 - **Favoritos** vinculados ao usuário (sincronizados no Supabase).
 - **Carrinho** vinculado ao usuário, com controle de estoque (opções de compra
   desabilitadas quando indisponível).
+- **Avaliações** de produtos (nota + comentário), uma por usuário/produto.
 - **Checkout em etapas**: entrega (com agenda de endereços), pagamento e
   confirmação (resumo antes de finalizar).
 - **Pedidos**: histórico e detalhes por usuário.
@@ -26,22 +30,6 @@ Nasceu como protótipo offline e evoluiu para uma versão real:
   colunas que empilham, grades fluidas).
 - **Página 404**: rota coringa (`path="*"`) com mensagem amigável e atalhos de
   volta à loja e para as categorias ([`src/screens/NaoEncontrado.jsx`](src/screens/NaoEncontrado.jsx)).
-
-## Bônus e diferenciais
-
-Além dos requisitos das etapas, o projeto inclui:
-
-- **Autenticação real com JWT (Supabase)**: login, cadastro, logout e sessão
-  persistente usando o **JWT do Supabase Auth** (em vez de um login simulado),
-  com **rotas protegidas** e **RLS** no Postgres para isolar os dados de cada
-  usuário. Ver [`src/services/authService.js`](src/services/authService.js) e
-  [`src/components/RotaProtegida.jsx`](src/components/RotaProtegida.jsx).
-- **Checkout com Mercado Pago (Checkout Pro)**: a preference é criada em função
-  serverless (o Access Token nunca vai ao front-end) e o pagamento é confirmado
-  por webhook. Detalhes na seção [Pagamento](#pagamento-mercado-pago--checkout-pro).
-- **Storybook + testes**: componentes do Design System documentados em
-  `*.stories.jsx`, com testes de componente (browser) e testes unitários (node).
-- **Página 404 dedicada** e **layout responsivo** (mobile/tablet).
 
 > ⚠️ **Estoque**: a DummyJSON não persiste alterações de estoque (aceita `PUT` e
 > finge sucesso). A baixa real é **derivada dos pedidos pagos** no Supabase: o
@@ -71,12 +59,17 @@ Copie o exemplo e preencha com os seus valores:
 cp .env.example .env
 ```
 
+Para avaliação de estudos, o arquivo `.env` será enviado na atividade do IFES.
+As variáveis são:
+
 | Variável | Obrigatória | Descrição |
 | --- | --- | --- |
 | `VITE_SUPABASE_URL` | ✅ | URL do projeto Supabase (Settings → API) |
 | `VITE_SUPABASE_ANON_KEY` | ✅ | Chave anônima do Supabase |
 | `VITE_MP_PUBLIC_KEY` | opcional | Chave pública do Mercado Pago |
 | `VITE_API_BASE_URL` | opcional | Base da API de catálogo (default DummyJSON) |
+| `MP_WEBHOOK_SECRET` | opcional | Segredo do webhook do Mercado Pago |
+| `SUPABASE_SERVICE_ROLE_KEY` | opcional | Chave de serviço do Supabase (para funções serverless) |
 
 > O cliente Supabase ([`src/services/supabase.js`](src/services/supabase.js))
 > lança erro se as variáveis obrigatórias não estiverem definidas.
@@ -84,9 +77,11 @@ cp .env.example .env
 ### Banco de dados (migrations)
 
 As tabelas (`profiles`, `addresses`, `orders`, `order_items`, `favorites`,
-`cart_items`) ficam em [`supabase/migrations/`](supabase/migrations/), todas com
-**RLS** (cada usuário só acessa o próprio dado). Rode os arquivos `.sql`
-manualmente no **SQL Editor** do Supabase, na ordem cronológica do nome.
+`cart_items`, `reviews`) ficam em [`supabase/migrations/`](supabase/migrations/),
+todas com **RLS** (cada usuário só acessa o próprio dado). Rode os arquivos
+`.sql` manualmente no **SQL Editor** do Supabase, na ordem cronológica do nome —
+ou aplique de uma vez o schema consolidado
+[`supabase/migrations/schema_completo.sql`](supabase/migrations/schema_completo.sql).
 
 ## Como rodar
 
@@ -98,6 +93,17 @@ npm run dev        # app em http://localhost:5173
 npm run build      # build de produção (pasta dist/)
 npm run preview    # serve o build de produção
 ```
+
+> 🔑 **Acesso de teste**: para entrar na loja, use uma conta já cadastrada:
+>
+> | Campo | Valor |
+> | --- | --- |
+> | E-mail | `test_user_1607170486577907987@testuser.com` |
+> | Senha | `y6DsZcc89x` |
+>
+> Ao finalizar a compra, o pagamento abre o **Mercado Pago** — faça login lá com
+> a **credencial de comprador de teste** (ver
+> [Pagar em ambiente de teste](#pagar-em-ambiente-de-teste)).
 
 ### Rodando com o pagamento local (funções serverless)
 
@@ -127,12 +133,18 @@ botão "Pagar com Mercado Pago" falha (a rota `/api` não existe no Vite).
 
 ## Pagamento (Mercado Pago — Checkout Pro)
 
+A preference é criada em função serverless (o Access Token nunca vai ao
+front-end) e o pagamento é confirmado por webhook server-side.
+
 ### Pagar em ambiente de teste
 
-Use **sempre credenciais de teste** (`APP_USR-`) disponíveis dentro do painel do desenvolvedor do Mercado Pago, em Credenciais Teste, realize o login com a conta Mercado Pago usando a credencial de **comprador de teste** — nunca com a conta de vendedor, senão o
-Mercado Pago recusa com *"uma das partes é de teste"*, e nem com uma conta real.
+Use **sempre credenciais de teste** (`APP_USR-`) disponíveis dentro do painel do
+desenvolvedor do Mercado Pago, em Credenciais Teste. Realize o login com a conta
+Mercado Pago usando a credencial de **comprador de teste** — nunca com a conta de
+vendedor, senão o Mercado Pago recusa com *"uma das partes é de teste"*, e nem
+com uma conta real.
 
-**Conta de comprador de teste:**
+**Conta de comprador de teste Acesso conta Mercado Pago:**
 
 | Campo | Valor |
 | --- | --- |
@@ -149,7 +161,8 @@ O comprador pode pagar com o **saldo em conta** ou com um **cartão de teste**:
 | Elo (débito) | `5067 7667 8388 8311` | `123` | `11/30` |
 
 Para **aprovar** o pagamento, preencha o **titular do cartão** com `APRO` e o
-documento **CPF `12345678909`**. Ou use os cartões já cadastrados, para não ter a compra teste recusada 
+documento **CPF `12345678909`**. Ou use os cartões já cadastrados, para não ter a
+compra de teste recusada.
 
 ## Scripts disponíveis
 
@@ -198,23 +211,23 @@ src/
 ├── context/           # StoreContext — estado global (catálogo, carrinho, favoritos, sessão, nav)
 ├── screens/           # Home, Catalog, Detail, Cart, Checkout, Login, Account, Wishlist, Help, PedidoRecebido, NaoEncontrado (404)
 ├── hooks/             # useMediaQuery — responsividade para a UI em estilos inline
-├── services/          # acesso a dados: supabase, auth, product, favorites, cart, address, order
-├── lib/               # puros: format.js (fmtBRL, finalPrice), orderNumber.js
+├── services/          # acesso a dados: supabase, auth, product, favorites, cart, address, order, review
+├── lib/               # puros: format.js (fmtBRL, finalPrice), orderNumber.js + mercadopago.js
 ├── utils/             # validators.js, masks.js
 └── styles/            # tokens (variables.css) + reset global (global.css)
 
+api/                   # funções serverless da Vercel (create-preference, mp-webhook)
 supabase/migrations/   # schema SQL (rodar manualmente no Supabase)
 tests/                 # unit/ (node) + helpers/
 ```
 
-## Contribuição
+## Diferencial
 
-1. Crie uma branch a partir de `main` (`feature/...` ou `fix/...`).
-2. Siga as convenções (textos e comentários em **pt-BR**).
-3. Cada mudança de comportamento deve ter teste em `tests/unit/`; rode
-   `npx vitest run --project unit` antes de commitar.
-4. Atualize o Storybook quando um componente do DS mudar de API ou ganhar
-   estado novo.
-5. Garanta `npm run lint` sem warnings.
-6. Commits seguem `feat:` / `fix:` / `test:` / `docs:` / `chore:`.
-7. Abra um PR para `main` para revisão.
+Além dos requisitos das etapas, o projeto inclui:
+
+- **Autenticação real com JWT (Supabase)**
+- **Checkout com Mercado Pago (Checkout Pro)**
+- **Avaliações de produtos**
+- **Storybook + testes**
+- **Página 404 dedicada**
+- **layout responsivo** (mobile/tablet).
