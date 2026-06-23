@@ -85,8 +85,13 @@ ou aplique de uma vez o schema consolidado
 [`supabase/migrations/schema_completo.sql`](supabase/migrations/schema_completo.sql).
 
 ## Como rodar
+>Para acessar a aplicaço no ambiente de testes, acesse: [https://tads-store.vercel.app/](https://tads-store.vercel.app/)
 
+> Para acessar a aplicação localmente, clone o repositório: [https://github.com/QuintilianoNery/tads_store.git](https://github.com/QuintilianoNery/tads_store.git)
+
+```bash
 > Todos os comandos são executados a partir da **raiz do projeto** (`tads_store/`).
+> 
 
 ```bash
 npm install        # instala as dependências
@@ -101,6 +106,8 @@ npm run preview    # serve o build de produção
 > | --- | --- |
 > | E-mail | `test_user_1607170486577907987@testuser.com` |
 > | Senha | `y6DsZcc89x` |
+>
+> Ou para uma melhor experiência, crie uma conta nova (cadastro) e use o **login** com ela.
 >
 > Para finalizar a compra, o pagamento abre o **Mercado Pago** — faça login com
 > a, pois com ela é realizada a autenticação correta. A **credencial de comprador de teste** (ver
