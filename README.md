@@ -102,8 +102,8 @@ npm run preview    # serve o build de produção
 > | E-mail | `test_user_1607170486577907987@testuser.com` |
 > | Senha | `y6DsZcc89x` |
 >
-> Ao finalizar a compra, o pagamento abre o **Mercado Pago** — faça login lá com
-> a **credencial de comprador de teste** (ver
+> Para finalizar a compra, o pagamento abre o **Mercado Pago** — faça login com
+> a, pois com ela é realizada a autenticação correta. A **credencial de comprador de teste** (ver
 > [Pagar em ambiente de teste](#pagar-em-ambiente-de-teste)).
 
 ### Rodando com o pagamento local (funções serverless)
