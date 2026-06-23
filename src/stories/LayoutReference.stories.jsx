@@ -4,7 +4,8 @@
 // do design: se o app (ou uma story) divergir destas imagens, houve regressão
 // de layout — use estas imagens para identificar o que deve ser restaurado.
 //
-// As imagens ficam em public/reference/ e são servidas via staticDirs.
+// As imagens ficam em .storybook/reference/ (fora de public/, para não irem ao
+// build de produção) e são servidas em /reference/ via staticDirs.
 
 const WARNING =
   'Este é o layout CORRETO e ATUAL da TADS Store. Se a aplicação divergir ' +
@@ -52,7 +53,7 @@ const meta = {
         component:
           'Prints reais do layout atual e correto da loja. Use como referência ' +
           'visual para detectar e corrigir regressões de layout. As imagens ' +
-          'estão em `public/reference/` e são atualizadas conforme o design evolui.',
+          'estão em `.storybook/reference/` e são atualizadas conforme o design evolui.',
       },
     },
   },
