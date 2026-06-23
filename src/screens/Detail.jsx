@@ -1,7 +1,7 @@
 // src/screens/Detail.jsx — galeria com zoom, bloco de preço, CTAs, trust, reviews, relacionados
 import { useState, useRef, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
-import { Button, Badge, StarRating } from '@/components/ds';
+import { Button, Badge, StarRating, Card } from '@/components/ds';
 import { Icon } from '@/components/Icon.jsx';
 import { useStore } from '@/context/StoreContext';
 import { fmtBRL, finalPrice, galleryFor } from '@/lib/format';
@@ -85,7 +85,7 @@ function ReviewsBlock({ rating, reviews }) {
       <Eyebrow>Opiniões</Eyebrow>
       <h2 style={{ fontSize: 'var(--text-2xl)', color: 'var(--color-gray-900)', margin: '6px 0 28px' }}>Avaliações de clientes</h2>
       <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'minmax(220px, 280px) 1fr', gap: isMobile ? 24 : 40, alignItems: 'start' }}>
-        <div style={{ background: '#fff', border: '1px solid var(--color-gray-100)', borderRadius: 'var(--radius-lg)', padding: 24, boxShadow: 'var(--shadow-sm)', textAlign: 'center' }}>
+        <Card as="div" style={{ textAlign: 'center' }}>
           <div style={{ fontFamily: 'var(--font-display)', fontSize: '3rem', fontWeight: 'var(--font-extrabold)', color: 'var(--color-gray-900)', lineHeight: 1 }}>{headlineRating.toFixed(1)}</div>
           <div style={{ display: 'flex', justifyContent: 'center', margin: '10px 0 6px' }}><StarRating rating={headlineRating} size={18} /></div>
           <p style={{ fontSize: 'var(--text-sm)', color: 'var(--color-gray-500)' }}>
@@ -102,18 +102,18 @@ function ReviewsBlock({ rating, reviews }) {
               </div>
             ))}
           </div>
-        </div>
+        </Card>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
           {reviews.length === 0 ? (
-            <div style={{ background: '#fff', border: '1px dashed var(--color-gray-200)', borderRadius: 'var(--radius-lg)', padding: 32, textAlign: 'center', color: 'var(--color-gray-500)' }}>
+            <Card variant="dashed" padding={32} style={{ textAlign: 'center', color: 'var(--color-gray-500)' }}>
               <Icon.Star size={28} style={{ color: 'var(--color-gray-300)', marginBottom: 8 }} />
               <p>Este produto ainda não tem avaliações. Compre e seja o primeiro a avaliar!</p>
-            </div>
+            </Card>
           ) : (
             reviews.map((review) => {
               const author = review.author_name || 'Cliente';
               return (
-                <div key={review.id} style={{ background: '#fff', border: '1px solid var(--color-gray-100)', borderRadius: 'var(--radius-lg)', padding: 20, boxShadow: 'var(--shadow-sm)' }}>
+                <Card key={review.id} padding={20}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 8 }}>
                     <span style={{ width: 40, height: 40, borderRadius: 'var(--radius-full)', background: 'var(--color-primary-700)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'var(--font-display)', fontWeight: 'var(--font-bold)' }}>{author.charAt(0).toUpperCase()}</span>
                     <div style={{ flex: 1 }}>
@@ -128,7 +128,7 @@ function ReviewsBlock({ rating, reviews }) {
                     </div>
                   </div>
                   {review.comment && <p style={{ fontSize: 'var(--text-sm)', color: 'var(--color-gray-600)', lineHeight: 1.65 }}>{review.comment}</p>}
-                </div>
+                </Card>
               );
             })
           )}
@@ -220,7 +220,7 @@ export default function Detail() {
           </div>
 
           {/* Bloco de preço */}
-          <div style={{ background: 'var(--color-gray-50)', border: '1px solid var(--color-gray-100)', borderRadius: 'var(--radius-lg)', padding: 20, marginBottom: 24 }}>
+          <Card variant="subtle" padding={20} style={{ marginBottom: 24 }}>
             <div style={{ display: 'flex', alignItems: 'baseline', gap: 12, flexWrap: 'wrap' }}>
               <span style={{ fontFamily: 'var(--font-display)', fontSize: '2.5rem', fontWeight: 'var(--font-extrabold)', color: 'var(--color-gray-900)', lineHeight: 1, letterSpacing: '-0.02em' }}>{fmtBRL(discountedPrice)}</span>
               {product.discountPercentage > 0 && <span style={{ fontSize: 'var(--text-lg)', color: 'var(--color-gray-400)', textDecoration: 'line-through' }}>{fmtBRL(product.price)}</span>}
@@ -230,7 +230,7 @@ export default function Detail() {
               {amountSaved > 0 && <span style={{ color: 'var(--color-deal-text)', fontWeight: 'var(--font-bold)' }}>Você economiza {fmtBRL(amountSaved)} · </span>}
               em até <strong style={{ color: 'var(--color-gray-800)' }}>12x de {fmtBRL(discountedPrice / 12)}</strong> sem juros
             </p>
-          </div>
+          </Card>
 
           <p style={{ color: 'var(--color-gray-600)', lineHeight: 1.7, marginBottom: 26 }}>{product.description}</p>
 

@@ -4,7 +4,7 @@
 // Mercado Pago (Checkout Pro): ao confirmar, criamos a preference no servidor e
 // redirecionamos o comprador. O pedido é registrado no retorno (/pedido-recebido).
 import React, { useState } from 'react';
-import { Button } from '@/components/ds';
+import { Button, Card } from '@/components/ds';
 import { Icon } from '@/components/Icon.jsx';
 import { AddressBook } from '@/components/AddressBook.jsx';
 import { useStore } from '@/context/StoreContext';
@@ -38,15 +38,6 @@ function Stepper({ step }) {
         );
       })}
     </div>
-  );
-}
-
-function Panel({ title, children }) {
-  return (
-    <section style={{ background: '#fff', border: '1px solid var(--color-gray-100)', borderRadius: 'var(--radius-lg)', padding: 24, boxShadow: 'var(--shadow-sm)' }}>
-      <h2 style={{ fontSize: 'var(--text-lg)', color: 'var(--color-gray-900)', marginBottom: 18 }}>{title}</h2>
-      {children}
-    </section>
   );
 }
 
@@ -148,7 +139,7 @@ export default function Checkout() {
 
           {/* ── ETAPA 0: ENTREGA ── */}
           {step === 0 && (
-            <Panel title="Endereço de entrega">
+            <Card title="Endereço de entrega">
               <p style={{ fontSize: 'var(--text-sm)', color: 'var(--color-gray-500)', marginBottom: 16 }}>
                 Selecione o endereço para a entrega ou cadastre um novo.
               </p>
@@ -168,12 +159,12 @@ export default function Checkout() {
                   Continuar para pagamento <Icon.ArrowRight size={18} />
                 </Button>
               </div>
-            </Panel>
+            </Card>
           )}
 
           {/* ── ETAPA 1: PAGAMENTO ── */}
           {step === 1 && (
-            <Panel title="Forma de pagamento">
+            <Card title="Forma de pagamento">
               <div style={{ display: 'flex', alignItems: 'flex-start', gap: 14, padding: 16, borderRadius: 'var(--radius-md)', border: '2px solid var(--color-primary-700)', background: 'var(--color-primary-50)' }}>
                 <span style={{ color: 'var(--color-primary-700)', flexShrink: 0, marginTop: 2 }}><Icon.Lock size={22} /></span>
                 <div>
@@ -187,12 +178,12 @@ export default function Checkout() {
                 <Button variant="ghost" size="lg" onClick={() => goTo(0)}><Icon.ChevronLeft size={18} /> Voltar</Button>
                 <Button variant="primary" size="lg" fullWidth onClick={() => goTo(2)}>Revisar pedido <Icon.ArrowRight size={18} /></Button>
               </div>
-            </Panel>
+            </Card>
           )}
 
           {/* ── ETAPA 2: CONFIRMAÇÃO ── */}
           {step === 2 && (
-            <Panel title="Revise e confirme">
+            <Card title="Revise e confirme">
               <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
                 <div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
@@ -230,15 +221,15 @@ export default function Checkout() {
                 <Button variant="ghost" size="lg" disabled={redirecting} onClick={() => goTo(1)}><Icon.ChevronLeft size={18} /> Voltar</Button>
                 <Button variant="deal" size="lg" fullWidth disabled={redirecting} onClick={handlePay}><Icon.Lock size={18} /> {redirecting ? 'Redirecionando...' : 'Pagar com Mercado Pago'}</Button>
               </div>
-            </Panel>
+            </Card>
           )}
         </div>
 
         {/* direita: resumo do pedido (sempre visível) */}
         <aside style={{ position: isTablet ? 'static' : 'sticky', top: 24, display: 'flex', flexDirection: 'column', gap: 14, minWidth: 0 }}>
-          <div style={{ background: '#fff', border: '1px solid var(--color-gray-100)', borderRadius: 'var(--radius-lg)', padding: 22, boxShadow: 'var(--shadow-sm)' }}>
-            <h2 style={{ fontSize: 'var(--text-lg)', color: 'var(--color-gray-900)', marginBottom: 16 }}>Resumo do pedido</h2>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginBottom: 16, maxHeight: 220, overflowY: 'auto', paddingTop: 8, paddingRight: 8 }}>
+          <Card padding={22}>
+            <Card.Header style={{ marginBottom: 16 }}>Resumo do pedido</Card.Header>
+            <Card.Body style={{ display: 'flex', flexDirection: 'column', gap: 12, marginBottom: 16, maxHeight: 220, overflowY: 'auto', paddingTop: 8, paddingRight: 8 }}>
               {items.map(({ product, qty }) => (
                 <div key={product.id} style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
                   <div style={{ position: 'relative', flexShrink: 0 }}>
@@ -252,8 +243,8 @@ export default function Checkout() {
                   <span style={{ fontFamily: 'var(--font-display)', fontSize: 'var(--text-sm)', fontWeight: 'var(--font-bold)', color: 'var(--color-gray-900)', whiteSpace: 'nowrap' }}>{fmtBRL(finalPrice(product) * qty)}</span>
                 </div>
               ))}
-            </div>
-            <div style={{ borderTop: '1px solid var(--color-gray-100)', paddingTop: 14, display: 'flex', flexDirection: 'column', gap: 6 }}>
+            </Card.Body>
+            <Card.Footer style={{ marginTop: 0, paddingTop: 14, flexDirection: 'column', alignItems: 'stretch', gap: 6 }}>
               <SumRow label="Subtotal" value={fmtBRL(subtotal)} />
               <SumRow label="Frete" value={shippingCost === 0 ? 'Grátis' : fmtBRL(shippingCost)} highlight={shippingCost === 0} />
               <div style={{ borderTop: '1px solid var(--color-gray-200)', margin: '8px 0' }} />
@@ -261,8 +252,8 @@ export default function Checkout() {
                 <span style={{ fontSize: 'var(--text-base)', fontWeight: 'var(--font-bold)', color: 'var(--color-gray-900)' }}>Total</span>
                 <span style={{ fontFamily: 'var(--font-display)', fontSize: 'var(--text-2xl)', fontWeight: 'var(--font-extrabold)', color: 'var(--color-gray-900)' }}>{fmtBRL(orderTotal)}</span>
               </div>
-            </div>
-          </div>
+            </Card.Footer>
+          </Card>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 16px', background: 'var(--color-primary-50)', borderRadius: 'var(--radius-md)', color: 'var(--color-primary-800)', fontSize: 'var(--text-xs)' }}>
             <Icon.Shield size={18} /> Compra 100% protegida. Seus dados são criptografados.
           </div>

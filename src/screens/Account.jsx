@@ -1,6 +1,6 @@
 // src/screens/Account.jsx — área logada: perfil, stats, pedidos, dados, endereços
 import { useState, useEffect } from 'react';
-import { Button, Input, Spinner, StarRating } from '@/components/ds';
+import { Button, Input, Spinner, StarRating, Card } from '@/components/ds';
 import { Icon } from '@/components/Icon.jsx';
 import { AddressBook } from '@/components/AddressBook.jsx';
 import { ReviewForm } from '@/components/ReviewForm.jsx';
@@ -203,16 +203,15 @@ export default function Account() {
         <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 14 }}>
             {stats.map((stat, i) => (
-              <div key={i} style={{ background: '#fff', border: '1px solid var(--color-gray-100)', borderRadius: 'var(--radius-lg)', padding: 18, boxShadow: 'var(--shadow-sm)' }}>
+              <Card key={i} padding={18}>
                 <div style={{ fontFamily: 'var(--font-display)', fontSize: 'var(--text-3xl)', fontWeight: 'var(--font-extrabold)', color: 'var(--color-gray-900)', lineHeight: 1 }}>{stat.value}</div>
                 <div style={{ fontSize: 'var(--text-sm)', color: 'var(--color-gray-500)', marginTop: 4 }}>{stat.label}</div>
-              </div>
+              </Card>
             ))}
           </div>
 
           {activeTab === 'pedidos' && (
-            <section style={{ background: '#fff', border: '1px solid var(--color-gray-100)', borderRadius: 'var(--radius-lg)', padding: 24, boxShadow: 'var(--shadow-sm)' }}>
-              <h2 style={{ fontSize: 'var(--text-xl)', color: 'var(--color-gray-900)', marginBottom: 16 }}>Meus pedidos</h2>
+            <Card title="Meus pedidos" titleSize="var(--text-xl)">
               {loadingOrders ? (
                 <div style={{ display: 'flex', justifyContent: 'center', padding: 32 }}><Spinner size={32} /></div>
               ) : orders.length === 0 ? (
@@ -324,13 +323,12 @@ export default function Account() {
                   })}
                 </div>
               )}
-            </section>
+            </Card>
           )}
 
           {activeTab === 'dados' && (
             <>
-              <section style={{ background: '#fff', border: '1px solid var(--color-gray-100)', borderRadius: 'var(--radius-lg)', padding: 24, boxShadow: 'var(--shadow-sm)' }}>
-                <h2 style={{ fontSize: 'var(--text-xl)', color: 'var(--color-gray-900)', marginBottom: 18 }}>Dados pessoais</h2>
+              <Card title="Dados pessoais" titleSize="var(--text-xl)">
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 16 }}>
                   <Input label="Nome completo" value={profile.name} onChange={(e) => updateProfile('name', e.target.value)} />
                   <Input label="E-mail" type="email" value={profile.email} onChange={(e) => updateProfile('email', maskEmail(e.target.value))} />
@@ -338,10 +336,10 @@ export default function Account() {
                   <Input label="Telefone" value={profile.phone} onChange={(e) => updateProfile('phone', maskPhone(e.target.value))} placeholder="(11) 90000-0000" />
                 </div>
                 <div style={{ marginTop: 18 }}><Button variant="primary">Salvar alterações</Button></div>
-              </section>
+              </Card>
 
-              <section style={{ background: '#fff', border: '1px solid var(--color-gray-100)', borderRadius: 'var(--radius-lg)', padding: 24, boxShadow: 'var(--shadow-sm)', marginTop: 18 }}>
-                <h2 style={{ fontSize: 'var(--text-xl)', color: 'var(--color-gray-900)', marginBottom: 6 }}>Alterar senha</h2>
+              <Card style={{ marginTop: 18 }}>
+                <Card.Header style={{ marginBottom: 6 }} titleSize="var(--text-xl)">Alterar senha</Card.Header>
                 <p style={{ fontSize: 'var(--text-sm)', color: 'var(--color-gray-500)', marginBottom: 18 }}>
                   Confirme sua senha atual e defina uma nova senha para a conta.
                 </p>
@@ -382,15 +380,14 @@ export default function Account() {
                     </Button>
                   </div>
                 </form>
-              </section>
+              </Card>
             </>
           )}
 
           {activeTab === 'enderecos' && (
-            <section style={{ background: '#fff', border: '1px solid var(--color-gray-100)', borderRadius: 'var(--radius-lg)', padding: 24, boxShadow: 'var(--shadow-sm)' }}>
-              <h2 style={{ fontSize: 'var(--text-xl)', color: 'var(--color-gray-900)', marginBottom: 18 }}>Endereços</h2>
+            <Card title="Endereços" titleSize="var(--text-xl)">
               <AddressBook userId={user?.id} />
-            </section>
+            </Card>
           )}
         </div>
       </div>
